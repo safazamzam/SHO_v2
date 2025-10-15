@@ -1,8 +1,7 @@
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_required, current_user
-from models.models import ShiftKeyPoint, ShiftKeyPointUpdate
-from app import db
+from models.models import ShiftKeyPoint, ShiftKeyPointUpdate, db
 from datetime import date
 
 keypoints_bp = Blueprint('keypoints', __name__)

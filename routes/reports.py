@@ -2,13 +2,24 @@
 from flask import Blueprint, render_template, request, send_file, session
 from flask_login import login_required, current_user
 from datetime import datetime
-from models.models import Shift, Incident, ShiftKeyPoint, TeamMember, Account, Team
+from models.models import Shift, Incident, ShiftKeyPoint, TeamMember, Account, Team, User
+from models.audit_log import AuditLog
 from services.export_service import export_incidents_csv, export_keypoints_pdf
 
 from services.audit_service import log_action
 
 
 reports_bp = Blueprint('reports', __name__)
+
+
+@reports_bp.route('/reports', methods=['GET'])
+@login_required
+def reports():
+    """Main reports page - redirects to handover reports"""
+    log_action('View Reports Tab', 'Accessed main reports page')
+    # Redirect to handover reports as the main reports page
+    from flask import redirect, url_for
+    return redirect(url_for('reports.handover_reports'))
 
 
 # Bulk export filtered handover reports as CSV or PDF
@@ -39,15 +50,43 @@ def export_handover_bulk():
     for shift in shifts:
         incidents = Incident.query.filter_by(shift_id=shift.id).all()
         key_points = ShiftKeyPoint.query.filter_by(shift_id=shift.id).all()
-        incident_titles = '; '.join([f"[{i.type}] {i.title}" for i in incidents])
+        
+        # Get detailed incident information
+        incident_details = []
+        for i in incidents:
+            details = f"[{i.type}] {i.title}"
+            if i.status:
+                details += f" (Status: {i.status})"
+            if i.priority:
+                details += f" (Priority: {i.priority})"
+            if i.handover:
+                details += f" - {i.handover}"
+            incident_details.append(details)
+        
+        incident_titles = '; '.join(incident_details)
+        
         keypoint_details = '; '.join([
-            f"{kp.description} ({kp.status}) [Responsible: {TeamMember.query.get(kp.responsible_engineer_id).name if kp.responsible_engineer_id else 'N/A'}]"
+            f"{kp.description} ({kp.status}) [Responsible: {TeamMember.query.get(kp.responsible_engineer_id).name if kp.responsible_engineer_id else 'N/A'}]" + 
+            (f" [JIRA: {kp.jira_id}]" if kp.jira_id else "")
             for kp in key_points
         ])
+        
+        # Find who submitted this handover from audit log
+        submitted_by = 'Unknown'
+        audit_entry = AuditLog.query.filter(
+            AuditLog.action.like('%Create Handover%'),
+            AuditLog.details.like(f'%Shift: {shift.current_shift_type}%'),
+            AuditLog.details.like(f'%Date: {shift.date}%')
+        ).first()
+        
+        if audit_entry:
+            submitted_by = audit_entry.username
+        
         rows.append({
             'Date': shift.date,
             'Current Shift': shift.current_shift_type,
             'Status': shift.status,
+            'Submitted By': submitted_by,
             'Incidents': incident_titles,
             'Key Points': keypoint_details
         })
@@ -66,7 +105,7 @@ def export_handover_bulk():
         c.drawString(100, 800, "Shift Handover Reports")
         y = 780
         for row in rows:
-            c.drawString(100, y, f"Date: {row['Date']} | Shift: {row['Current Shift']} | Status: {row['Status']}")
+            c.drawString(100, y, f"Date: {row['Date']} | Shift: {row['Current Shift']} | Status: {row['Status']} | Submitted By: {row['Submitted By']}")
             y -= 20
             c.drawString(120, y, f"Incidents: {row['Incidents']}")
             y -= 20
@@ -145,22 +184,96 @@ def handover_reports():
     for shift in shifts:
         incidents = Incident.query.filter_by(shift_id=shift.id).all()
         key_points = ShiftKeyPoint.query.filter_by(shift_id=shift.id).all()
+        
+        # Get detailed incident information
+        incidents_data = []
+        for inc in incidents:
+            incident_details = {
+                'type': inc.type,
+                'title': inc.title,
+                'status': inc.status,
+                'priority': inc.priority,
+                'handover': inc.handover
+            }
+            incidents_data.append(incident_details)
+        
+        # Get detailed key points information
         key_points_data = []
         for kp in key_points:
-            engineer = TeamMember.query.get(kp.responsible_engineer_id)
+            engineer = None
+            if kp.responsible_engineer_id:
+                engineer = TeamMember.query.get(kp.responsible_engineer_id)
             key_points_data.append({
                 'description': kp.description,
                 'status': kp.status,
-                'responsible': engineer.name if engineer else 'N/A'
+                'responsible': engineer.name if engineer else 'N/A',
+                'jira_id': kp.jira_id
             })
+        
+        # Find who submitted this handover from audit log
+        submitted_by = 'Unknown'
+        audit_entry = AuditLog.query.filter(
+            AuditLog.action.like('%Create Handover%'),
+            AuditLog.details.like(f'%Shift: {shift.current_shift_type}%'),
+            AuditLog.details.like(f'%Date: {shift.date}%')
+        ).first()
+        
+        if audit_entry:
+            submitted_by = audit_entry.username
+        
         shift_data.append({
             'shift': shift,
-            'incidents': incidents,
-            'key_points': key_points_data
+            'incidents': incidents_data,
+            'key_points': key_points_data,
+            'submitted_by': submitted_by
         })
+    
+    # Calculate visualization data
+    total_shifts = len(shift_data)
+    total_incidents = sum(len(entry['incidents']) for entry in shift_data)
+    total_keypoints = sum(len(entry['key_points']) for entry in shift_data)
+    
+    # Incident type distribution
+    incident_types = {}
+    incident_priorities = {'High': 0, 'Medium': 0, 'Low': 0}
+    keypoint_statuses = {'Open': 0, 'In Progress': 0, 'Closed': 0}
+    
+    shift_type_distribution = {'Morning': 0, 'Evening': 0, 'Night': 0}
+    
+    for entry in shift_data:
+        # Shift type distribution
+        shift_type = entry['shift'].current_shift_type
+        if shift_type in shift_type_distribution:
+            shift_type_distribution[shift_type] += 1
+            
+        # Incident analysis
+        for inc in entry['incidents']:
+            inc_type = inc['type']
+            incident_types[inc_type] = incident_types.get(inc_type, 0) + 1
+            
+            priority = inc['priority']
+            if priority in incident_priorities:
+                incident_priorities[priority] += 1
+        
+        # Key point analysis
+        for kp in entry['key_points']:
+            status = kp['status']
+            if status in keypoint_statuses:
+                keypoint_statuses[status] += 1
+    
+    stats = {
+        'total_shifts': total_shifts,
+        'total_incidents': total_incidents,
+        'total_keypoints': total_keypoints,
+        'incident_types': incident_types,
+        'incident_priorities': incident_priorities,
+        'keypoint_statuses': keypoint_statuses,
+        'shift_type_distribution': shift_type_distribution
+    }
     return render_template(
         'handover_reports.html',
         shift_data=shift_data,
+        stats=stats,
         date_filter=date_filter or '',
         shift_type_filter=shift_type_filter or '',
         accounts=accounts,

@@ -1,7 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_required, current_user
-from models.models import TeamMember
-from app import db
+from models.models import TeamMember, db
 
 team_bp = Blueprint('team', __name__)
 

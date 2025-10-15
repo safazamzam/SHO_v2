@@ -1,8 +1,10 @@
 from flask_mail import Message
-from app import mail
 from flask import current_app
 
 def send_handover_email(shift):
+    # Import mail here to avoid circular import
+    from flask import current_app
+    mail = current_app.extensions.get('mail')
     import logging
     from models.models import Incident, ShiftKeyPoint, TeamMember
     subject = f"{shift.current_shift_type} to {shift.next_shift_type} Handover - {shift.date}"
@@ -77,4 +79,91 @@ def send_handover_email(shift):
     except Exception as e:
         print(f"[EMAIL_SERVICE] Failed to send email to {recipients}: {e}")
         logging.error(f"[EMAIL_SERVICE] Failed to send email to {recipients}: {e}")
+        raise
+
+
+def send_incident_assignment_notification(incident_id, incident_description, assigned_engineer, incident_type, shift_date):
+    """Send notification email when an incident is assigned to an engineer"""
+    from flask import current_app
+    mail = current_app.extensions.get('mail')
+    import logging
+    from models.models import TeamMember, User
+    
+    # Find the assigned engineer's email
+    try:
+        team_member = TeamMember.query.filter_by(name=assigned_engineer).first()
+        engineer_email = team_member.email if team_member else None
+        
+        # Get team email for CC
+        team_email = current_app.config.get('TEAM_EMAIL', '')
+        
+        if not engineer_email:
+            logging.warning(f"Could not find email for engineer: {assigned_engineer}")
+            # Send only to team email if engineer email not found
+            recipients = [team_email] if team_email else []
+        else:
+            recipients = [engineer_email]
+            if team_email and team_email != engineer_email:
+                recipients.append(team_email)
+        
+        if not recipients:
+            logging.warning("No email recipients found for incident assignment notification")
+            return
+        
+        subject = f"Incident Assignment: {incident_id} - {incident_type}"
+        
+        html = f"""
+        <html>
+        <head></head>
+        <body>
+            <h2>Incident Assignment Notification</h2>
+            <p>Dear {assigned_engineer},</p>
+            
+            <p>You have been assigned a new {incident_type.lower()} incident for shift on <strong>{shift_date}</strong>.</p>
+            
+            <table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse; width:100%; margin: 20px 0;">
+                <tr>
+                    <th style="background-color: #f8f9fa; text-align: left;">Incident ID</th>
+                    <td>{incident_id}</td>
+                </tr>
+                <tr>
+                    <th style="background-color: #f8f9fa; text-align: left;">Type</th>
+                    <td>{incident_type}</td>
+                </tr>
+                <tr>
+                    <th style="background-color: #f8f9fa; text-align: left;">Assigned To</th>
+                    <td>{assigned_engineer}</td>
+                </tr>
+                <tr>
+                    <th style="background-color: #f8f9fa; text-align: left;">Description</th>
+                    <td>{incident_description}</td>
+                </tr>
+                <tr>
+                    <th style="background-color: #f8f9fa; text-align: left;">Shift Date</th>
+                    <td>{shift_date}</td>
+                </tr>
+            </table>
+            
+            <p>Please take appropriate action and update the incident status in the shift handover system.</p>
+            
+            <p>Best regards,<br>
+            Shift Handover System</p>
+        </body>
+        </html>
+        """
+        
+        msg = Message(subject=subject, recipients=recipients)
+        msg.body = "Please view this email in HTML format."
+        msg.html = html
+        
+        logging.info(f"[INCIDENT_ASSIGNMENT] Sending notification to {recipients} for incident {incident_id}")
+        try:
+            mail.send(msg)
+            logging.info(f"[INCIDENT_ASSIGNMENT] Email sent successfully to {recipients}")
+        except Exception as e:
+            logging.error(f"[INCIDENT_ASSIGNMENT] Failed to send email to {recipients}: {e}")
+            raise
+            
+    except Exception as e:
+        logging.error(f"[INCIDENT_ASSIGNMENT] Error in send_incident_assignment_notification: {e}")
         raise

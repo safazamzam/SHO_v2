@@ -1,0 +1,76 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# Environment variables (sensitive data)
+.env
+.env.local
+.env.production
+
+# Flask instance folder
+instance/
+*.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Uploads directory (may contain sensitive data)
+uploads/*/
+
+# Migration files that might contain sensitive data
+migrations/versions/*.py
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+
+# Build files
+build/
+dist/
+*.egg-info/
+
+# Coverage reports
+htmlcov/
+.coverage
+.pytest_cache/
+
+# Node modules (if using any frontend tools)
+node_modules/
+
+# Backup files
+*.bak
+*_backup*
+*~
+
+# Azure deployment files (may contain sensitive configs)
+azure-pipelines.yml
+deployment/
+
+# Production configuration
+*.prod.*

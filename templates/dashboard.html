@@ -1,172 +1,263 @@
 {% extends "base.html" %}
-<div class="container-fluid px-0">
-    <h2 class="mb-4">Dashboard</h2>
-    <div class="row g-4">
-        <div class="col-md-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-primary text-white">Open Incidents</div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        {% for incident in open_incidents %}
-                        <li class="list-group-item">{{ incident.title }} <span class="badge bg-warning text-dark ms-2">{{ incident.priority }}</span></li>
-                        {% else %}
-                        <li class="list-group-item">No open incidents</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-info text-white">Current Shift Engineers</div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        {% for engineer in current_engineers %}
-                        <li class="list-group-item">{{ engineer.name }}</li>
-                        {% else %}
-                        <li class="list-group-item">No current shift engineers</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-success text-white">Next Shift Engineers</div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        {% for engineer in next_shift_engineers %}
-                        <li class="list-group-item">{{ engineer.name }}</li>
-                        {% else %}
-                        <li class="list-group-item">No next shift engineers</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-secondary text-white">Open Key Points</div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        {% for kp in open_key_points %}
-                        <li class="list-group-item">{{ kp.description }}</li>
-                        {% else %}
-                        <li class="list-group-item">No open key points</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
+
 {% block content %}
+<link rel="stylesheet" href="/static/dashboard_enhanced.css">
+
 <div class="container-fluid px-0">
-    <h2 class="mb-4">Dashboard</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0">Operations Dashboard</h2>
+        <div class="d-flex align-items-center">
+            <span id="current-time" class="text-muted"></span>
+        </div>
+    </div>
 
-    {% if accounts and teams %}
-    <form method="get" class="row g-3 mb-4">
-        <div class="col-auto">
-            <label for="account_id" class="form-label">Account</label>
-            <select class="form-select" id="account_id" name="account_id" onchange="this.form.submit()">
-                {% for account in accounts %}
-                    <option value="{{ account.id }}" {% if account.id == selected_account_id %}selected{% endif %}>{{ account.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-auto">
-            <label for="team_id" class="form-label">Team</label>
-            <select class="form-select" id="team_id" name="team_id" onchange="this.form.submit()">
-                {% for team in teams %}
-                    <option value="{{ team.id }}" {% if team.id == selected_team_id %}selected{% endif %}>{{ team.name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-    </form>
-    {% endif %}
-
-    <div class="row g-4">
-        <div class="col-md-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-primary text-white">Open Incidents</div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        {% for incident in open_incidents %}
-                        <li class="list-group-item">{{ incident.title }} <span class="badge bg-warning text-dark ms-2">{{ incident.priority }}</span></li>
-                        {% else %}
-                        <li class="list-group-item">No open incidents</li>
-                        {% endfor %}
-                    </ul>
+    <!-- Compact Statistics Cards -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-3 col-md-6">
+            <div class="dashboard-stats-compact" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon-compact">🚨</div>
+                    <div class="flex-grow-1">
+                        <div class="stat-number-compact">{{ open_incidents|length }}</div>
+                        <div class="stat-label-compact">Recent Handovers</div>
+                    </div>
+                    {% if open_incidents|length > 0 %}
+                    <span class="notification-badge-compact">!</span>
+                    {% endif %}
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-info text-white">Current Shift Engineers</div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        {% for engineer in current_engineers %}
-                        <li class="list-group-item">{{ engineer.name }}</li>
-                        {% else %}
-                        <li class="list-group-item">No current shift engineers</li>
-                        {% endfor %}
-                    </ul>
+        <div class="col-lg-3 col-md-6">
+            <div class="dashboard-stats-compact" style="background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon-compact">👥</div>
+                    <div class="flex-grow-1">
+                        <div class="stat-number-compact">{{ current_engineers|length }}</div>
+                        <div class="stat-label-compact">On Duty Now</div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-success text-white">Next Shift Engineers</div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        {% for engineer in next_shift_engineers %}
-                        <li class="list-group-item">{{ engineer.name }}</li>
-                        {% else %}
-                        <li class="list-group-item">No next shift engineers</li>
-                        {% endfor %}
-                    </ul>
+        <div class="col-lg-3 col-md-6">
+            <div class="dashboard-stats-compact" style="background: linear-gradient(135deg, #45b7d1 0%, #96c93d 100%);">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon-compact">📋</div>
+                    <div class="flex-grow-1">
+                        <div class="stat-number-compact">{{ open_key_points|length }}</div>
+                        <div class="stat-label-compact">Pending Actions</div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card shadow-sm h-100">
-                <div class="card-header bg-secondary text-white">Open Key Points</div>
-                <div class="card-body">
-                    <ul class="list-group list-group-flush">
-                        {% for kp in open_key_points %}
-                        <li class="list-group-item">{{ kp.description }}</li>
-                        {% else %}
-                        <li class="list-group-item">No open key points</li>
-                        {% endfor %}
-                    </ul>
+        <div class="col-lg-3 col-md-6">
+            <div class="dashboard-stats-compact" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon-compact">⏰</div>
+                    <div class="flex-grow-1">
+                        <div class="stat-number-compact" id="shift-countdown">{{ current_shift_type }}</div>
+                        <div class="stat-label-compact">Current Shift</div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
-<div class="mt-4">
-    <h4>Overview Chart</h4>
-    <form method="get" class="row g-2 align-items-end mb-3">
-        <div class="col-auto">
-            <label for="range" class="form-label">Date Range</label>
-            <select name="range" id="range" class="form-control">
-                <option value="1d" {% if selected_range == '1d' %}selected{% endif %}>Last 1 Day</option>
-                <option value="7d" {% if selected_range == '7d' or not selected_range %}selected{% endif %}>Last 7 Days</option>
-                <option value="30d" {% if selected_range == '30d' %}selected{% endif %}>Last 1 Month</option>
-                <option value="1y" {% if selected_range == '1y' %}selected{% endif %}>Last 1 Year</option>
-                <option value="custom" {% if selected_range == 'custom' %}selected{% endif %}>Custom</option>
-            </select>
+
+    <!-- Enhanced Content Cards -->
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="metric-card-compact">
+                <h5 class="d-flex align-items-center mb-3">
+                    <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>
+                    Recent Handover Incidents
+                    <span class="badge bg-warning ms-2">{{ open_incidents|length }}</span>
+                </h5>
+                {% if open_incidents %}
+                    <div class="incidents-list">
+                        {% for incident in open_incidents[:5] %}
+                        <div class="incident-item">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1">
+                                    <div class="incident-title">{{ incident.title }}</div>
+                                    <div class="incident-meta">
+                                        <span class="badge bg-{{ 'danger' if incident.priority == 'High' or incident.priority == 'Critical' else 'warning' if incident.priority == 'Medium' else 'info' }} me-2">
+                                            {{ incident.priority }}
+                                        </span>
+                                        <span class="badge bg-secondary me-2">{{ incident.type }}</span>
+                                        <span class="text-muted small">{{ incident.status }}</span>
+                                    </div>
+                                    {% if incident.description %}
+                                    <div class="incident-desc">{{ incident.description[:100] }}{% if incident.description|length > 100 %}...{% endif %}</div>
+                                    {% endif %}
+                                    {% if incident.assigned_to %}
+                                    <div class="incident-assigned">
+                                        <i class="bi bi-person-fill text-info me-1"></i>
+                                        {{ incident.assigned_to }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% if open_incidents|length > 5 %}
+                        <div class="text-center mt-2">
+                            <small class="text-muted">{{ open_incidents|length - 5 }} more incidents...</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-3">
+                        <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                        <p class="text-muted mt-2 mb-0">All clear! No recent handover incidents.</p>
+                    </div>
+                {% endif %}
+            </div>
         </div>
-        <div class="col-auto" id="custom-date-fields" {% if selected_range != 'custom' %}style="display:none;"{% endif %}>
-            <label for="start_date" class="form-label">From</label>
-            <input type="date" name="start_date" id="start_date" class="form-control" value="{{ start_date }}">
-            <label for="end_date" class="form-label">To</label>
-            <input type="date" name="end_date" id="end_date" class="form-control" value="{{ end_date }}">
+
+        <div class="col-lg-6">
+            <div class="metric-card-compact">
+                <h5 class="d-flex align-items-center mb-3">
+                    <i class="bi bi-people-fill text-info me-2"></i>
+                    Shift Status
+                </h5>
+                <div class="row">
+                    <div class="col-6">
+                        <h6 class="shift-header">Current ({{ current_shift_type }})</h6>
+                        {% if current_engineers %}
+                            {% for engineer in current_engineers %}
+                            <div class="engineer-item">
+                                <span class="shift-status-indicator shift-active"></span>
+                                <span class="engineer-name">{{ engineer.name }}</span>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                        <div class="no-engineers">
+                            <i class="bi bi-person-x text-muted"></i>
+                            <span class="text-muted">No engineers assigned</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-6">
+                        <h6 class="shift-header">Next ({{ next_shift_type }})</h6>
+                        {% if next_shift_engineers %}
+                            {% for engineer in next_shift_engineers %}
+                            <div class="engineer-item">
+                                <span class="shift-status-indicator shift-upcoming"></span>
+                                <span class="engineer-name">{{ engineer.name }}</span>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                        <div class="no-engineers">
+                            <i class="bi bi-person-x text-muted"></i>
+                            <span class="text-muted">No engineers assigned</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
         </div>
-        <!-- Single date field removed -->
-        <div class="col-auto">
-            <button type="submit" class="btn btn-primary">Apply</button>
+    </div>
+
+    <!-- Action Items Card -->
+    <div class="row g-3 mt-3">
+        <div class="col-12">
+            <div class="metric-card">
+                <h5 class="d-flex align-items-center mb-3">
+                    <i class="bi bi-list-check text-warning me-2"></i>
+                    Pending Action Items (Open & In Progress)
+                    {% if open_key_points|length > 0 %}
+                    <span class="badge bg-warning text-dark ms-2">{{ open_key_points|length }}</span>
+                    {% endif %}
+                </h5>
+                {% if open_key_points %}
+                <div class="list-group">
+                    {% for kp in open_key_points %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>{{ kp.description }}</span>
+                        <span class="badge bg-{{ 'warning' if kp.status == 'Open' else 'info' if kp.status == 'In Progress' else 'success' }}">
+                            {{ kp.status }}
+                        </span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-check-all text-success" style="font-size: 2rem;"></i>
+                    <p class="text-muted mt-2 mb-0">All action items completed!</p>
+                </div>
+                {% endif %}
+            </div>
         </div>
-    </form>
-    <div id="chart"></div>
+    </div>
+
+    <!-- Enhanced Analytics Section -->
+    <div class="mt-4">
+        <div class="chart-container">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4>📊 Analytics Overview</h4>
+                <form method="get" class="row g-2 align-items-end">
+                    <div class="col-auto">
+                        <label for="range" class="form-label">Time Period</label>
+                        <select name="range" id="range" class="form-control">
+                            <option value="1d" {% if selected_range == '1d' %}selected{% endif %}>Last 24 Hours</option>
+                            <option value="7d" {% if selected_range == '7d' or not selected_range %}selected{% endif %}>Last 7 Days</option>
+                            <option value="30d" {% if selected_range == '30d' %}selected{% endif %}>Last 30 Days</option>
+                            <option value="1y" {% if selected_range == '1y' %}selected{% endif %}>Last Year</option>
+                            <option value="custom" {% if selected_range == 'custom' %}selected{% endif %}>Custom Range</option>
+                        </select>
+                    </div>
+                    <div class="col-auto" id="custom-date-fields" {% if selected_range != 'custom' %}style="display:none;"{% endif %}>
+                        <div class="row g-2">
+                            <div class="col">
+                                <label for="start_date" class="form-label">From</label>
+                                <input type="date" name="start_date" id="start_date" class="form-control" value="{{ start_date }}">
+                            </div>
+                            <div class="col">
+                                <label for="end_date" class="form-label">To</label>
+                                <input type="date" name="end_date" id="end_date" class="form-control" value="{{ end_date }}">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-arrow-clockwise me-1"></i>Apply
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Charts Row -->
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <div id="main-chart" style="height: 400px;"></div>
+                </div>
+                <div class="col-lg-4">
+                    <div id="incident-pie-chart" style="height: 400px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for Enhanced Functionality -->
     <script>
+        // Real-time clock update
+        function updateTime() {
+            const now = new Date();
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                timeZone: 'Asia/Kolkata'
+            };
+            document.getElementById('current-time').textContent = now.toLocaleDateString('en-IN', options);
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // Custom date range toggle
         document.getElementById('range').addEventListener('change', function() {
             var customFields = document.getElementById('custom-date-fields');
             if (this.value === 'custom') {
@@ -175,16 +266,57 @@
                 customFields.style.display = 'none';
             }
         });
-        var graphJSON = {{ graphJSON|safe }};
-        if (typeof graphJSON === 'object') {
-            Plotly.newPlot('chart', graphJSON.data, graphJSON.layout);
-        } else {
-            var parsed = graphJSON;
-            if (typeof graphJSON === 'string') {
-                parsed = JSON.parse(graphJSON);
+
+        // Enhanced Plotly Charts
+        if (typeof window.graphJSON !== 'undefined' && window.graphJSON) {
+            const graphJSON = window.graphJSON;
+            if (typeof graphJSON === 'object') {
+                Plotly.newPlot('main-chart', graphJSON.data, graphJSON.layout, {responsive: true});
+            } else {
+                const parsed = typeof graphJSON === 'string' ? JSON.parse(graphJSON) : graphJSON;
+                Plotly.newPlot('main-chart', parsed.data, parsed.layout, {responsive: true});
             }
-            Plotly.newPlot('chart', parsed.data, parsed.layout);
+        } else {
+            // Default chart if no data
+            const defaultData = [{
+                x: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                y: [2, 1, 3, 0, 4, 1, 2],
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Incidents',
+                line: {color: '#ff6b6b'}
+            }];
+            const defaultLayout = {
+                title: 'Incident Trends',
+                xaxis: {title: 'Day'},
+                yaxis: {title: 'Count'},
+                margin: {t: 50, r: 50, b: 50, l: 50}
+            };
+            Plotly.newPlot('main-chart', defaultData, defaultLayout, {responsive: true});
         }
+
+        // Incident Priority Pie Chart
+        const incidentData = [{
+            values: [{{ open_incidents|selectattr('priority', 'equalto', 'high')|list|length }}, 
+                     {{ open_incidents|selectattr('priority', 'equalto', 'medium')|list|length }}, 
+                     {{ open_incidents|selectattr('priority', 'equalto', 'low')|list|length }}],
+            labels: ['High', 'Medium', 'Low'],
+            type: 'pie',
+            marker: {
+                colors: ['#ff4757', '#ffa502', '#2ed573']
+            }
+        }];
+        const incidentLayout = {
+            title: 'Incident Priority Distribution',
+            margin: {t: 40, r: 20, b: 20, l: 20},
+            showlegend: false
+        };
+        Plotly.newPlot('incident-pie-chart', incidentData, incidentLayout, {responsive: true});
+
+        // Auto-refresh functionality
+        setTimeout(function() {
+            location.reload();
+        }, 300000); // Refresh every 5 minutes
     </script>
 </div>
 {% endblock %}

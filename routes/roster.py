@@ -1,8 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from flask_login import login_required, current_user
 from flask import session
-from models.models import TeamMember, ShiftRoster
-from app import db
+from models.models import TeamMember, ShiftRoster, db
 from datetime import datetime
 
 roster_bp = Blueprint('roster', __name__)
@@ -182,6 +181,8 @@ def roster():
         filter_date=filter_date,
         filter_shift=filter_shift,
         present_members=present_members,
-        present_members_by_shift=present_members_by_shift if 'present_members_by_shift' in locals() else {}
+        present_members_by_shift=present_members_by_shift if 'present_members_by_shift' in locals() else {},
+        accounts=accounts,
+        teams=teams
     )
 

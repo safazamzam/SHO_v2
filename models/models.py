@@ -79,6 +79,10 @@ class Incident(db.Model):
     type = db.Column(db.String(32), nullable=False) # Active, Closed, Priority, Handover
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=False)
     team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
+    # Enhanced fields for detailed incident tracking
+    description = db.Column(db.Text)  # Detailed description/notes/resolution
+    assigned_to = db.Column(db.String(128))  # Person assigned to handle the incident
+    escalated_to = db.Column(db.String(128))  # Person/team escalated to
 
 
 class ShiftKeyPoint(db.Model):

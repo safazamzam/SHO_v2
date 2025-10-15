@@ -1,5 +1,5 @@
 # This service can be used for additional DB operations if needed
-from app import db
+from models.models import db
 
 def commit_changes():
     db.session.commit()

@@ -24,9 +24,22 @@ def set_selection():
 # Make accounts/teams available in all templates
 @auth_bp.app_context_processor
 def inject_accounts_teams():
-    accounts = Account.query.filter_by(is_active=True).all() if current_user.is_authenticated and current_user.role in ['super_admin', 'account_admin'] else []
-    selected_account_id = session.get('selected_account_id')
-    teams = Team.query.filter_by(account_id=selected_account_id, is_active=True).all() if selected_account_id else []
+    try:
+        # Check if current_user is available and authenticated
+        if hasattr(current_user, 'is_authenticated') and current_user.is_authenticated and current_user.role in ['super_admin', 'account_admin']:
+            accounts = Account.query.filter_by(is_active=True).all()
+        else:
+            accounts = []
+    except:
+        # If current_user is not available, return empty lists
+        accounts = []
+    
+    try:
+        selected_account_id = session.get('selected_account_id')
+        teams = Team.query.filter_by(account_id=selected_account_id, is_active=True).all() if selected_account_id else []
+    except:
+        teams = []
+    
     return dict(accounts=accounts, teams=teams)
 
 from flask import jsonify
@@ -90,11 +103,6 @@ def login():
         else:
             flash('Invalid credentials or role')
     return render_template('login.html', accounts=accounts, teams=teams, selected_account_id=selected_account_id_int, selected_team_id=selected_team_id_int)
-
-from flask import Blueprint, render_template, redirect, url_for, request, flash, session
-from flask_login import login_user, logout_user, login_required, current_user
-from models.models import User, Account, Team
-from werkzeug.security import check_password_hash
 
 @auth_bp.route('/logout')
 @login_required
