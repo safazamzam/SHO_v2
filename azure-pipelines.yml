@@ -137,7 +137,6 @@ stages:
         # Login to Azure Container Registry from GCP VM via SSH
         echo "🔐 Logging into Azure Container Registry on remote VM..."
         ssh -o StrictHostKeyChecking=no shifthandoversajid@35.200.202.18 << 'EOF'
-        ssh -o StrictHostKeyChecking=no shifthandoversajid@35.200.202.18 << 'EOF'
         az acr login --name $(acrName) || {
           echo "Installing Azure CLI on VM..."
           curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
