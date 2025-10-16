@@ -117,23 +117,20 @@ stages:
   dependsOn: DockerBuild
   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
   jobs:
-  - deployment: DeployToGCP
+  - job: DeployToGCP
     displayName: 'Deploy to Google Cloud VM'
     pool:
       vmImage: 'ubuntu-latest'
     
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-          - checkout: none
-          
-          - task: SSH@0
-            displayName: 'Deploy Application to GCP VM'
-            inputs:
-              sshEndpoint: 'GCPVMConnection'
-              runOptions: 'commands'
-              commands: |
+    steps:
+    - checkout: none
+    
+    - task: SSH@0
+      displayName: 'Deploy Application to GCP VM'
+      inputs:
+        sshEndpoint: 'GCPVMConnection'
+        runOptions: 'commands'
+        commands: |
                 echo "🚀 Starting deployment to GCP VM..."
                 
                 # Login to Azure Container Registry from GCP VM
@@ -200,12 +197,12 @@ stages:
                   exit 1
                 fi
           
-          - task: SSH@0
-            displayName: 'Health Check and Verification'
-            inputs:
-              sshEndpoint: 'GCPVMConnection'
-              runOptions: 'commands'
-              commands: |
+    - task: SSH@0
+      displayName: 'Health Check and Verification'
+      inputs:
+        sshEndpoint: 'GCPVMConnection'
+        runOptions: 'commands'
+        commands: |
                 echo "🔍 Performing health checks..."
                 
                 # Wait a bit more for app to be fully ready
