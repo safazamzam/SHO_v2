@@ -124,114 +124,121 @@ stages:
     
     steps:
     - checkout: none
-    
-    - task: SSH@0
+        
+    - script: |
+        echo "🚀 Starting deployment to GCP VM..."
+        
+        # Setup SSH key
+        mkdir -p ~/.ssh
+        echo "$(SSH_PRIVATE_KEY)" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        echo "35.200.202.18 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC7ma3Vf8OlWzJGvEzj" >> ~/.ssh/known_hosts
+        
+        # Login to Azure Container Registry from GCP VM via SSH
+        echo "🔐 Logging into Azure Container Registry on remote VM..."
+        ssh -o StrictHostKeyChecking=no shifthandoversajid@35.200.202.18 << 'EOF'
+        ssh -o StrictHostKeyChecking=no shifthandoversajid@35.200.202.18 << 'EOF'
+        az acr login --name $(acrName) || {
+          echo "Installing Azure CLI on VM..."
+          curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+          az acr login --name $(acrName)
+        }
+        
+        # Create application directories
+        sudo mkdir -p /opt/shift-handover-data
+        sudo mkdir -p /opt/shift-handover-uploads
+        sudo chown -R $USER:$USER /opt/shift-handover-*
+        
+        # Stop and remove existing container
+        echo "🛑 Stopping existing container..."
+        sudo docker stop shift-handover-app || true
+        sudo docker rm shift-handover-app || true
+        
+        # Pull latest image from ACR
+        echo "📥 Pulling latest Docker image from Azure Container Registry..."
+        sudo docker pull $(fullImageName)
+        
+        # Run new container
+        echo "🚀 Starting new container..."
+        sudo docker run -d \
+          --name shift-handover-app \
+          --restart unless-stopped \
+          -p 80:5000 \
+          -p 443:5000 \
+          -e FLASK_ENV=production \
+          -e SECRET_KEY="$(SECRET_KEY)" \
+          -e DATABASE_URI="$(DATABASE_URI)" \
+          -e SMTP_SERVER=smtp.gmail.com \
+          -e SMTP_PORT=587 \
+          -e SMTP_USERNAME="$(SMTP_USERNAME)" \
+          -e SMTP_PASSWORD="$(SMTP_PASSWORD)" \
+          -e TEAM_EMAIL="$(SMTP_USERNAME)" \
+          -e SERVICENOW_INSTANCE="$(SERVICENOW_INSTANCE)" \
+          -e SERVICENOW_USERNAME="$(SERVICENOW_USERNAME)" \
+          -e SERVICENOW_PASSWORD="$(SERVICENOW_PASSWORD)" \
+          -e SERVICENOW_ENABLED=true \
+          -e SSO_ENCRYPTION_KEY="$(SSO_ENCRYPTION_KEY)" \
+          -e GOOGLE_OAUTH_CLIENT_ID="$(GOOGLE_OAUTH_CLIENT_ID)" \
+          -e GOOGLE_OAUTH_CLIENT_SECRET="$(GOOGLE_OAUTH_CLIENT_SECRET)" \
+          -v /opt/shift-handover-data:/app/instance \
+          -v /opt/shift-handover-uploads:/app/uploads \
+          $(fullImageName)
+        
+        echo "✅ Container started successfully"
+        
+        # Wait for application to initialize
+        echo "⏳ Waiting for application to initialize..."
+        sleep 15
+        
+        # Check container status
+        if sudo docker ps | grep -q shift-handover-app; then
+          echo "✅ Container is running"
+          sudo docker ps | grep shift-handover-app
+        else
+          echo "❌ Container failed to start"
+          sudo docker logs shift-handover-app --tail 50
+          exit 1
+        fi
+EOF
       displayName: 'Deploy Application to GCP VM'
-      inputs:
-        sshEndpoint: 'GCPVMConnection'
-        runOptions: 'commands'
-        commands: |
-                echo "🚀 Starting deployment to GCP VM..."
-                
-                # Login to Azure Container Registry from GCP VM
-                echo "🔐 Logging into Azure Container Registry..."
-                az acr login --name $(acrName) || {
-                  echo "Installing Azure CLI on VM..."
-                  curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-                  az acr login --name $(acrName)
-                }
-                
-                # Create application directories
-                sudo mkdir -p /opt/shift-handover-data
-                sudo mkdir -p /opt/shift-handover-uploads
-                sudo chown -R $USER:$USER /opt/shift-handover-*
-                
-                # Stop and remove existing container
-                echo "🛑 Stopping existing container..."
-                sudo docker stop shift-handover-app || true
-                sudo docker rm shift-handover-app || true
-                
-                # Pull latest image from ACR
-                echo "📥 Pulling latest Docker image from Azure Container Registry..."
-                sudo docker pull $(fullImageName)
-                
-                # Run new container
-                echo "🚀 Starting new container..."
-                sudo docker run -d \
-                  --name shift-handover-app \
-                  --restart unless-stopped \
-                  -p 80:5000 \
-                  -p 443:5000 \
-                  -e FLASK_ENV=production \
-                  -e SECRET_KEY="$(SECRET_KEY)" \
-                  -e DATABASE_URI="$(DATABASE_URI)" \
-                  -e SMTP_SERVER=smtp.gmail.com \
-                  -e SMTP_PORT=587 \
-                  -e SMTP_USERNAME="$(SMTP_USERNAME)" \
-                  -e SMTP_PASSWORD="$(SMTP_PASSWORD)" \
-                  -e TEAM_EMAIL="$(SMTP_USERNAME)" \
-                  -e SERVICENOW_INSTANCE="$(SERVICENOW_INSTANCE)" \
-                  -e SERVICENOW_USERNAME="$(SERVICENOW_USERNAME)" \
-                  -e SERVICENOW_PASSWORD="$(SERVICENOW_PASSWORD)" \
-                  -e SERVICENOW_ENABLED=true \
-                  -e SSO_ENCRYPTION_KEY="$(SSO_ENCRYPTION_KEY)" \
-                  -e GOOGLE_OAUTH_CLIENT_ID="$(GOOGLE_OAUTH_CLIENT_ID)" \
-                  -e GOOGLE_OAUTH_CLIENT_SECRET="$(GOOGLE_OAUTH_CLIENT_SECRET)" \
-                  -v /opt/shift-handover-data:/app/instance \
-                  -v /opt/shift-handover-uploads:/app/uploads \
-                  $(fullImageName)
-                
-                echo "✅ Container started successfully"
-                
-                # Wait for application to initialize
-                echo "⏳ Waiting for application to initialize..."
-                sleep 15
-                
-                # Check container status
-                if sudo docker ps | grep -q shift-handover-app; then
-                  echo "✅ Container is running"
-                  sudo docker ps | grep shift-handover-app
-                else
-                  echo "❌ Container failed to start"
-                  sudo docker logs shift-handover-app --tail 50
-                  exit 1
-                fi
           
-    - task: SSH@0
+    - script: |
+        echo "🔍 Performing health checks..."
+        
+        # Health check via SSH
+        ssh -o StrictHostKeyChecking=no shifthandoversajid@35.200.202.18 << 'EOF'
+        ssh -o StrictHostKeyChecking=no shifthandoversajid@35.200.202.18 << 'EOF'
+        echo "🔍 Performing health checks..."
+        
+        # Wait a bit more for app to be fully ready
+        sleep 10
+        
+        # Check application response
+        if curl -f --max-time 30 http://localhost/; then
+          echo "✅ Application is responding on HTTP"
+        else
+          echo "⚠️ HTTP health check failed, checking container logs..."
+          sudo docker logs shift-handover-app --tail 100
+        fi
+        
+        # Check if SSO endpoints are accessible
+        if curl -f --max-time 10 http://localhost/login; then
+          echo "✅ Login page is accessible"
+        else
+          echo "⚠️ Login page check failed"
+        fi
+        
+        # Display container information
+        echo "📊 Container status:"
+        sudo docker ps --filter name=shift-handover-app --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+        
+        # Display resource usage
+        echo "💾 Resource usage:"
+        sudo docker stats shift-handover-app --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}"
+        
+        echo "🎉 Deployment verification completed!"
+EOF
       displayName: 'Health Check and Verification'
-      inputs:
-        sshEndpoint: 'GCPVMConnection'
-        runOptions: 'commands'
-        commands: |
-                echo "🔍 Performing health checks..."
-                
-                # Wait a bit more for app to be fully ready
-                sleep 10
-                
-                # Check application response
-                if curl -f --max-time 30 http://localhost/; then
-                  echo "✅ Application is responding on HTTP"
-                else
-                  echo "⚠️ HTTP health check failed, checking container logs..."
-                  sudo docker logs shift-handover-app --tail 100
-                fi
-                
-                # Check if SSO endpoints are accessible
-                if curl -f --max-time 10 http://localhost/login; then
-                  echo "✅ Login page is accessible"
-                else
-                  echo "⚠️ Login page check failed"
-                fi
-                
-                # Display container information
-                echo "📊 Container status:"
-                sudo docker ps --filter name=shift-handover-app --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-                
-                # Display resource usage
-                echo "💾 Resource usage:"
-                sudo docker stats shift-handover-app --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}"
-                
-                echo "🎉 Deployment verification completed!"
 
 - stage: Cleanup
   displayName: 'Post-Deployment Cleanup'
