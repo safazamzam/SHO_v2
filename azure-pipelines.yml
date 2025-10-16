@@ -12,8 +12,7 @@ trigger:
       - "*.md"
 
 variables:
-- group: production-secrets  # Create this variable group in Azure DevOps
-- group: pipeline-config     # Create this variable group in Azure DevOps
+- group: ACR-Variables       # Azure Container Registry and deployment variables
 - name: imageTag
   value: '$(Build.BuildId)'
 - name: fullImageName
