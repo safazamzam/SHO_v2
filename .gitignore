@@ -69,7 +69,7 @@ node_modules/
 *~
 
 # Azure deployment files (may contain sensitive configs)
-azure-pipelines.yml
+# azure-pipelines.yml  # Commented out - pipeline file needed for Azure DevOps
 deployment/
 
 # Production configuration

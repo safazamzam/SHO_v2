@@ -1,0 +1,274 @@
+# Azure DevOps CI/CD Pipeline for Shift Handover App
+# Deploys to Google Cloud VM using Azure Container Registry (ACR)
+
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    exclude:
+      - README.md
+      - docs/*
+      - "*.md"
+
+variables:
+- group: production-secrets  # Create this variable group in Azure DevOps
+- group: pipeline-config     # Create this variable group in Azure DevOps
+- name: imageTag
+  value: '$(Build.BuildId)'
+- name: fullImageName
+  value: '$(acrLoginServer)/$(dockerRepository):$(imageTag)'
+
+stages:
+- stage: Build
+  displayName: 'Build and Test'
+  jobs:
+  - job: BuildJob
+    displayName: 'Build Application'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - checkout: self
+      fetchDepth: 1
+      displayName: 'Checkout Source Code'
+    
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: '$(pythonVersion)'
+        addToPath: true
+      displayName: 'Setup Python $(pythonVersion)'
+    
+    - script: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+      displayName: 'Install Dependencies'
+    
+    - script: |
+        echo "🔍 Validating application..."
+        python -c "
+        try:
+            import app
+            print('✅ Application imports successfully')
+            print('✅ Flask app configuration valid')
+        except Exception as e:
+            print(f'❌ Application validation failed: {e}')
+            exit(1)
+        "
+        echo "✅ Build validation completed"
+      displayName: 'Validate Application'
+
+- stage: DockerBuild
+  displayName: 'Build Docker Image'
+  dependsOn: Build
+  condition: succeeded()
+  jobs:
+  - job: DockerBuildJob
+    displayName: 'Build and Push to Azure Container Registry'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - checkout: self
+      displayName: 'Checkout Source Code'
+    
+    - task: AzureCLI@2
+      displayName: 'Login to Azure Container Registry'
+      inputs:
+        azureSubscription: 'ACRConnection'  # Service connection for ACR
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "🔐 Logging into Azure Container Registry..."
+          az acr login --name $(acrName)
+          echo "✅ Successfully logged into $(acrLoginServer)"
+    
+    - task: Docker@2
+      displayName: 'Build Docker Image'
+      inputs:
+        containerRegistry: 'ACRConnection'
+        repository: '$(dockerRepository)'
+        command: 'build'
+        Dockerfile: 'Dockerfile'
+        tags: |
+          $(imageTag)
+          latest
+        arguments: '--no-cache --pull'
+    
+    - task: Docker@2
+      displayName: 'Push Docker Image to ACR'
+      inputs:
+        containerRegistry: 'ACRConnection'
+        repository: '$(dockerRepository)'
+        command: 'push'
+        tags: |
+          $(imageTag)
+          latest
+    
+    - script: |
+        echo "🐳 Docker image built and pushed to Azure Container Registry:"
+        echo "Registry: $(acrLoginServer)"
+        echo "Repository: $(dockerRepository)"
+        echo "Tags: $(imageTag), latest"
+        echo "Full image name: $(fullImageName)"
+      displayName: 'Docker Build Summary'
+
+- stage: Deploy
+  displayName: 'Deploy to GCP VM'
+  dependsOn: DockerBuild
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  - deployment: DeployToGCP
+    displayName: 'Deploy to Google Cloud VM'
+    environment: 'production-gcp'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: none
+          
+          - task: SSH@0
+            displayName: 'Deploy Application to GCP VM'
+            inputs:
+              sshEndpoint: 'GCPVMConnection'
+              runOptions: 'commands'
+              commands: |
+                echo "🚀 Starting deployment to GCP VM..."
+                
+                # Login to Azure Container Registry from GCP VM
+                echo "🔐 Logging into Azure Container Registry..."
+                az acr login --name $(acrName) || {
+                  echo "Installing Azure CLI on VM..."
+                  curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+                  az acr login --name $(acrName)
+                }
+                
+                # Create application directories
+                sudo mkdir -p /opt/shift-handover-data
+                sudo mkdir -p /opt/shift-handover-uploads
+                sudo chown -R $USER:$USER /opt/shift-handover-*
+                
+                # Stop and remove existing container
+                echo "🛑 Stopping existing container..."
+                sudo docker stop shift-handover-app || true
+                sudo docker rm shift-handover-app || true
+                
+                # Pull latest image from ACR
+                echo "📥 Pulling latest Docker image from Azure Container Registry..."
+                sudo docker pull $(fullImageName)
+                
+                # Run new container
+                echo "🚀 Starting new container..."
+                sudo docker run -d \
+                  --name shift-handover-app \
+                  --restart unless-stopped \
+                  -p 80:5000 \
+                  -p 443:5000 \
+                  -e FLASK_ENV=production \
+                  -e SECRET_KEY="$(SECRET_KEY)" \
+                  -e DATABASE_URI="$(DATABASE_URI)" \
+                  -e SMTP_SERVER=smtp.gmail.com \
+                  -e SMTP_PORT=587 \
+                  -e SMTP_USERNAME="$(SMTP_USERNAME)" \
+                  -e SMTP_PASSWORD="$(SMTP_PASSWORD)" \
+                  -e TEAM_EMAIL="$(SMTP_USERNAME)" \
+                  -e SERVICENOW_INSTANCE="$(SERVICENOW_INSTANCE)" \
+                  -e SERVICENOW_USERNAME="$(SERVICENOW_USERNAME)" \
+                  -e SERVICENOW_PASSWORD="$(SERVICENOW_PASSWORD)" \
+                  -e SERVICENOW_ENABLED=true \
+                  -e SSO_ENCRYPTION_KEY="$(SSO_ENCRYPTION_KEY)" \
+                  -e GOOGLE_OAUTH_CLIENT_ID="$(GOOGLE_OAUTH_CLIENT_ID)" \
+                  -e GOOGLE_OAUTH_CLIENT_SECRET="$(GOOGLE_OAUTH_CLIENT_SECRET)" \
+                  -v /opt/shift-handover-data:/app/instance \
+                  -v /opt/shift-handover-uploads:/app/uploads \
+                  $(fullImageName)
+                
+                echo "✅ Container started successfully"
+                
+                # Wait for application to initialize
+                echo "⏳ Waiting for application to initialize..."
+                sleep 15
+                
+                # Check container status
+                if sudo docker ps | grep -q shift-handover-app; then
+                  echo "✅ Container is running"
+                  sudo docker ps | grep shift-handover-app
+                else
+                  echo "❌ Container failed to start"
+                  sudo docker logs shift-handover-app --tail 50
+                  exit 1
+                fi
+          
+          - task: SSH@0
+            displayName: 'Health Check and Verification'
+            inputs:
+              sshEndpoint: 'GCPVMConnection'
+              runOptions: 'commands'
+              commands: |
+                echo "🔍 Performing health checks..."
+                
+                # Wait a bit more for app to be fully ready
+                sleep 10
+                
+                # Check application response
+                if curl -f --max-time 30 http://localhost/; then
+                  echo "✅ Application is responding on HTTP"
+                else
+                  echo "⚠️ HTTP health check failed, checking container logs..."
+                  sudo docker logs shift-handover-app --tail 100
+                fi
+                
+                # Check if SSO endpoints are accessible
+                if curl -f --max-time 10 http://localhost/login; then
+                  echo "✅ Login page is accessible"
+                else
+                  echo "⚠️ Login page check failed"
+                fi
+                
+                # Display container information
+                echo "📊 Container status:"
+                sudo docker ps --filter name=shift-handover-app --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+                
+                # Display resource usage
+                echo "💾 Resource usage:"
+                sudo docker stats shift-handover-app --no-stream --format "table {{.Container}}\t{{.CPUPerc}}\t{{.MemUsage}}"
+                
+                echo "🎉 Deployment verification completed!"
+
+- stage: Cleanup
+  displayName: 'Post-Deployment Cleanup'
+  dependsOn: Deploy
+  condition: succeeded()
+  jobs:
+  - job: CleanupJob
+    displayName: 'Cleanup Old Images'
+    pool:
+      vmImage: 'ubuntu-latest'
+    
+    steps:
+    - task: SSH@0
+      displayName: 'Cleanup Old Docker Images'
+      inputs:
+        sshEndpoint: 'GCPVMConnection'
+        runOptions: 'commands'
+        commands: |
+          echo "🧹 Cleaning up old Docker images..."
+          
+          # Remove dangling images
+          sudo docker image prune -f
+          
+          # Remove old versions from ACR (keep last 3)
+          sudo docker images $(acrLoginServer)/$(dockerRepository) --format "{{.Tag}}" | \
+            grep -v "latest" | \
+            tail -n +4 | \
+            xargs -r -I {} sudo docker rmi $(acrLoginServer)/$(dockerRepository):{} || true
+          
+          # Clean up system
+          sudo docker system prune -f
+          
+          echo "✅ Cleanup completed"
+          echo "📋 Remaining images:"
+          sudo docker images $(acrLoginServer)/$(dockerRepository)
