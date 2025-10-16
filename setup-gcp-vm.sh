@@ -26,7 +26,16 @@ fi
 
 # Install curl and other utilities
 echo "🛠️ Installing utilities..."
-sudo apt install -y curl wget git htop
+sudo apt install -y curl wget git htop jq
+
+# Install Azure CLI for ACR access
+echo "☁️ Installing Azure CLI for Azure Container Registry access..."
+if ! command -v az &> /dev/null; then
+    curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+    echo "✅ Azure CLI installed successfully"
+else
+    echo "✅ Azure CLI is already installed"
+fi
 
 # Create application directories
 echo "📁 Creating application directories..."
