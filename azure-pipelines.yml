@@ -1,96 +1,188 @@
-trigger:# Azure DevOps CI/CD Pipeline for Shift Handover App
+trigger:trigger:# Azure DevOps CI/CD Pipeline for Shift Handover App
+
+- main
 
 - main# Deploys to Google Cloud VM using Azure Container Registry (ACR)
 
+variables:
+
+- group: ACR-Variables
 
 
-variables:trigger:
 
-- group: ACR-Variables  branches:
+stages:variables:trigger:
 
-    include:
+- stage: Build
 
-stages:      - main
+  displayName: 'Build Application'- group: ACR-Variables  branches:
 
-- stage: Build  paths:
+  jobs:
 
-  displayName: 'Build Application'    exclude:
+  - job: BuildJob    include:
 
-  jobs:      - README.md
+    displayName: 'Build and Test'
 
-  - job: BuildJob      - docs/*
-
-    displayName: 'Build and Test'      - "*.md"
-
-    pool:
-
-      vmImage: 'ubuntu-latest'variables:
-
-    - group: ACR-Variables       # Azure Container Registry and deployment variables
-
-    steps:- name: imageTag
-
-    - checkout: self  value: '$(Build.BuildId)'
-
-    - name: fullImageName
-
-    - task: UsePythonVersion@0  value: '$(acrLoginServer)/$(dockerRepository):$(imageTag)'
-
-      inputs:
-
-        versionSpec: '3.9'stages:
-
-      displayName: 'Use Python 3.9'- stage: Build
-
-      displayName: 'Build and Test'
-
-    - script: |  jobs:
-
-        python -m pip install --upgrade pip  - job: BuildJob
-
-        pip install -r requirements.txt    displayName: 'Build Application'
-
-      displayName: 'Install dependencies'    pool:
+    pool:stages:      - main
 
       vmImage: 'ubuntu-latest'
 
-- stage: DockerBuild    
+    - stage: Build  paths:
 
-  displayName: 'Build and Push Docker Image'    steps:
+    steps:
 
-  dependsOn: Build    - checkout: self
+    - checkout: self  displayName: 'Build Application'    exclude:
+
+    
+
+    - task: UsePythonVersion@0  jobs:      - README.md
+
+      inputs:
+
+        versionSpec: '3.9'  - job: BuildJob      - docs/*
+
+      displayName: 'Use Python 3.9'
+
+        displayName: 'Build and Test'      - "*.md"
+
+    - script: |
+
+        python -m pip install --upgrade pip    pool:
+
+        pip install -r requirements.txt
+
+      displayName: 'Install dependencies'      vmImage: 'ubuntu-latest'variables:
+
+
+
+- stage: DockerBuild    - group: ACR-Variables       # Azure Container Registry and deployment variables
+
+  displayName: 'Build and Push Docker Image'
+
+  dependsOn: Build    steps:- name: imageTag
+
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+
+  jobs:    - checkout: self  value: '$(Build.BuildId)'
+
+  - job: DockerBuild
+
+    displayName: 'Build and Push to ACR'    - name: fullImageName
+
+    pool:
+
+      vmImage: 'ubuntu-latest'    - task: UsePythonVersion@0  value: '$(acrLoginServer)/$(dockerRepository):$(imageTag)'
+
+    
+
+    steps:      inputs:
+
+    - checkout: self
+
+            versionSpec: '3.9'stages:
+
+    - task: AzureCLI@2
+
+      displayName: 'Login to Azure Container Registry'      displayName: 'Use Python 3.9'- stage: Build
+
+      inputs:
+
+        azureSubscription: 'ACRConnection'      displayName: 'Build and Test'
+
+        scriptType: 'bash'
+
+        scriptLocation: 'inlineScript'    - script: |  jobs:
+
+        inlineScript: |
+
+          az acr login --name $(acrName)        python -m pip install --upgrade pip  - job: BuildJob
+
+    
+
+    - script: |        pip install -r requirements.txt    displayName: 'Build Application'
+
+        export imageTag="$(Build.BuildNumber)"
+
+        export fullImageName="$(acrLoginServer)/$(dockerRepository):$imageTag"      displayName: 'Install dependencies'    pool:
+
+        
+
+        docker build -t $(dockerRepository):$imageTag .      vmImage: 'ubuntu-latest'
+
+        docker tag $(dockerRepository):$imageTag $fullImageName
+
+        docker push $fullImageName- stage: DockerBuild    
+
+        
+
+        echo "##vso[task.setvariable variable=imageTag;isOutput=true]$imageTag"  displayName: 'Build and Push Docker Image'    steps:
+
+        echo "##vso[task.setvariable variable=fullImageName;isOutput=true]$fullImageName"
+
+      name: dockerBuild  dependsOn: Build    - checkout: self
+
+      displayName: 'Build and Push Docker Image'
 
   condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))      fetchDepth: 1
 
-  jobs:      displayName: 'Checkout Source Code'
+- stage: DeployStage
 
-  - job: DockerBuild    
+  displayName: 'Deploy to GCP VM'  jobs:      displayName: 'Checkout Source Code'
 
-    displayName: 'Build and Push to ACR'    - task: UsePythonVersion@0
+  dependsOn: DockerBuild
 
-    pool:      inputs:
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))  - job: DockerBuild    
 
-      vmImage: 'ubuntu-latest'        versionSpec: '$(pythonVersion)'
+  jobs:
 
-            addToPath: true
+  - job: VMDeployment    displayName: 'Build and Push to ACR'    - task: UsePythonVersion@0
 
-    steps:      displayName: 'Setup Python $(pythonVersion)'
+    displayName: 'VM Deployment Job'
 
-    - checkout: self    
+    pool:    pool:      inputs:
 
-        - script: |
+      vmImage: 'ubuntu-latest'
 
-    - task: AzureCLI@2        python -m pip install --upgrade pip
+    variables:      vmImage: 'ubuntu-latest'        versionSpec: '$(pythonVersion)'
 
-      displayName: 'Login to Azure Container Registry'        pip install -r requirements.txt
+      imageTag: $[ stageDependencies.DockerBuild.DockerBuild.outputs['dockerBuild.imageTag'] ]
 
-      inputs:      displayName: 'Install Dependencies'
+      fullImageName: $[ stageDependencies.DockerBuild.DockerBuild.outputs['dockerBuild.fullImageName'] ]            addToPath: true
 
-        azureSubscription: 'ACRConnection'    
+    
 
-        scriptType: 'bash'    - script: |
+    steps:    steps:      displayName: 'Setup Python $(pythonVersion)'
 
-        scriptLocation: 'inlineScript'        echo "🔍 Validating application..."
+    - checkout: none
+
+            - checkout: self    
+
+    - script: |
+
+        echo "Starting deployment to GCP VM..."        - script: |
+
+        
+
+        mkdir -p ~/.ssh    - task: AzureCLI@2        python -m pip install --upgrade pip
+
+        echo "$(SSH_PRIVATE_KEY)" > ~/.ssh/id_rsa
+
+        chmod 600 ~/.ssh/id_rsa      displayName: 'Login to Azure Container Registry'        pip install -r requirements.txt
+
+        
+
+        ssh -o StrictHostKeyChecking=no shifthandoversajid@35.200.202.18 << 'EOF'      inputs:      displayName: 'Install Dependencies'
+
+        sudo docker stop shift-handover-app || true
+
+        sudo docker rm shift-handover-app || true        azureSubscription: 'ACRConnection'    
+
+        sudo docker pull $(fullImageName)
+
+        sudo docker run -d --name shift-handover-app --restart unless-stopped -p 80:5000 $(fullImageName)        scriptType: 'bash'    - script: |
+
+EOF
+
+      displayName: 'Deploy Application'        scriptLocation: 'inlineScript'        echo "🔍 Validating application..."
 
         inlineScript: |        python -c "
 
