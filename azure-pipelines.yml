@@ -1,96 +1,188 @@
-# Azure DevOps CI/CD Pipeline for Shift Handover App
-# Deploys to Google Cloud VM using Azure Container Registry (ACR)
+trigger:# Azure DevOps CI/CD Pipeline for Shift Handover App
 
-trigger:
-  branches:
+- main# Deploys to Google Cloud VM using Azure Container Registry (ACR)
+
+
+
+variables:trigger:
+
+- group: ACR-Variables  branches:
+
     include:
-      - main
-  paths:
-    exclude:
-      - README.md
-      - docs/*
-      - "*.md"
 
-variables:
-- group: ACR-Variables       # Azure Container Registry and deployment variables
-- name: imageTag
-  value: '$(Build.BuildId)'
-- name: fullImageName
-  value: '$(acrLoginServer)/$(dockerRepository):$(imageTag)'
+stages:      - main
 
-stages:
-- stage: Build
-  displayName: 'Build and Test'
-  jobs:
-  - job: BuildJob
-    displayName: 'Build Application'
+- stage: Build  paths:
+
+  displayName: 'Build Application'    exclude:
+
+  jobs:      - README.md
+
+  - job: BuildJob      - docs/*
+
+    displayName: 'Build and Test'      - "*.md"
+
     pool:
-      vmImage: 'ubuntu-latest'
-    
-    steps:
-    - checkout: self
-      fetchDepth: 1
-      displayName: 'Checkout Source Code'
-    
-    - task: UsePythonVersion@0
-      inputs:
-        versionSpec: '$(pythonVersion)'
-        addToPath: true
-      displayName: 'Setup Python $(pythonVersion)'
-    
-    - script: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-      displayName: 'Install Dependencies'
-    
-    - script: |
-        echo "🔍 Validating application..."
-        python -c "
-        try:
-            import app
-            print('✅ Application imports successfully')
-            print('✅ Flask app configuration valid')
-        except Exception as e:
-            print(f'❌ Application validation failed: {e}')
-            exit(1)
-        "
-        echo "✅ Build validation completed"
-      displayName: 'Validate Application'
 
-- stage: DockerBuild
-  displayName: 'Build Docker Image'
-  dependsOn: Build
+      vmImage: 'ubuntu-latest'variables:
+
+    - group: ACR-Variables       # Azure Container Registry and deployment variables
+
+    steps:- name: imageTag
+
+    - checkout: self  value: '$(Build.BuildId)'
+
+    - name: fullImageName
+
+    - task: UsePythonVersion@0  value: '$(acrLoginServer)/$(dockerRepository):$(imageTag)'
+
+      inputs:
+
+        versionSpec: '3.9'stages:
+
+      displayName: 'Use Python 3.9'- stage: Build
+
+      displayName: 'Build and Test'
+
+    - script: |  jobs:
+
+        python -m pip install --upgrade pip  - job: BuildJob
+
+        pip install -r requirements.txt    displayName: 'Build Application'
+
+      displayName: 'Install dependencies'    pool:
+
+      vmImage: 'ubuntu-latest'
+
+- stage: DockerBuild    
+
+  displayName: 'Build and Push Docker Image'    steps:
+
+  dependsOn: Build    - checkout: self
+
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))      fetchDepth: 1
+
+  jobs:      displayName: 'Checkout Source Code'
+
+  - job: DockerBuild    
+
+    displayName: 'Build and Push to ACR'    - task: UsePythonVersion@0
+
+    pool:      inputs:
+
+      vmImage: 'ubuntu-latest'        versionSpec: '$(pythonVersion)'
+
+            addToPath: true
+
+    steps:      displayName: 'Setup Python $(pythonVersion)'
+
+    - checkout: self    
+
+        - script: |
+
+    - task: AzureCLI@2        python -m pip install --upgrade pip
+
+      displayName: 'Login to Azure Container Registry'        pip install -r requirements.txt
+
+      inputs:      displayName: 'Install Dependencies'
+
+        azureSubscription: 'ACRConnection'    
+
+        scriptType: 'bash'    - script: |
+
+        scriptLocation: 'inlineScript'        echo "🔍 Validating application..."
+
+        inlineScript: |        python -c "
+
+          az acr login --name $(acrName)        try:
+
+                import app
+
+    - script: |            print('✅ Application imports successfully')
+
+        export imageTag="$(Build.BuildNumber)"            print('✅ Flask app configuration valid')
+
+        export fullImageName="$(acrLoginServer)/$(dockerRepository):$imageTag"        except Exception as e:
+
+                    print(f'❌ Application validation failed: {e}')
+
+        docker build -t $(dockerRepository):$imageTag .            exit(1)
+
+        docker tag $(dockerRepository):$imageTag $fullImageName        "
+
+        docker push $fullImageName        echo "✅ Build validation completed"
+
+              displayName: 'Validate Application'
+
+        echo "##vso[task.setvariable variable=imageTag;isOutput=true]$imageTag"
+
+        echo "##vso[task.setvariable variable=fullImageName;isOutput=true]$fullImageName"- stage: DockerBuild
+
+      name: dockerBuild  displayName: 'Build Docker Image'
+
+      displayName: 'Build and Push Docker Image'  dependsOn: Build
+
   condition: succeeded()
-  jobs:
-  - job: DockerBuildJob
-    displayName: 'Build and Push to Azure Container Registry'
-    pool:
-      vmImage: 'ubuntu-latest'
-    
-    steps:
-    - checkout: self
-      displayName: 'Checkout Source Code'
-    
-    - task: AzureCLI@2
-      displayName: 'Login to Azure Container Registry'
-      inputs:
-        azureSubscription: 'ACRConnection'  # Service connection for ACR
-        scriptType: 'bash'
-        scriptLocation: 'inlineScript'
-        inlineScript: |
-          echo "🔐 Logging into Azure Container Registry..."
-          az acr login --name $(acrName)
-          echo "✅ Successfully logged into $(acrLoginServer)"
-    
-    - task: Docker@2
-      displayName: 'Build Docker Image'
-      inputs:
-        containerRegistry: 'ACRConnection'
-        repository: '$(dockerRepository)'
-        command: 'build'
-        Dockerfile: 'Dockerfile'
-        tags: |
-          $(imageTag)
+
+- stage: DeployStage  jobs:
+
+  displayName: 'Deploy to GCP VM'  - job: DockerBuildJob
+
+  dependsOn: DockerBuild    displayName: 'Build and Push to Azure Container Registry'
+
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))    pool:
+
+  jobs:      vmImage: 'ubuntu-latest'
+
+  - job: VMDeployment    
+
+    displayName: 'VM Deployment Job'    steps:
+
+    pool:    - checkout: self
+
+      vmImage: 'ubuntu-latest'      displayName: 'Checkout Source Code'
+
+    variables:    
+
+      imageTag: $[ stageDependencies.DockerBuild.DockerBuild.outputs['dockerBuild.imageTag'] ]    - task: AzureCLI@2
+
+      fullImageName: $[ stageDependencies.DockerBuild.DockerBuild.outputs['dockerBuild.fullImageName'] ]      displayName: 'Login to Azure Container Registry'
+
+          inputs:
+
+    steps:        azureSubscription: 'ACRConnection'  # Service connection for ACR
+
+    - checkout: none        scriptType: 'bash'
+
+                scriptLocation: 'inlineScript'
+
+    - script: |        inlineScript: |
+
+        echo "Starting deployment to GCP VM..."          echo "🔐 Logging into Azure Container Registry..."
+
+                  az acr login --name $(acrName)
+
+        mkdir -p ~/.ssh          echo "✅ Successfully logged into $(acrLoginServer)"
+
+        echo "$(SSH_PRIVATE_KEY)" > ~/.ssh/id_rsa    
+
+        chmod 600 ~/.ssh/id_rsa    - task: Docker@2
+
+              displayName: 'Build Docker Image'
+
+        ssh -o StrictHostKeyChecking=no shifthandoversajid@35.200.202.18 << 'EOF'      inputs:
+
+        sudo docker stop shift-handover-app || true        containerRegistry: 'ACRConnection'
+
+        sudo docker rm shift-handover-app || true        repository: '$(dockerRepository)'
+
+        sudo docker pull $(fullImageName)        command: 'build'
+
+        sudo docker run -d --name shift-handover-app --restart unless-stopped -p 80:5000 $(fullImageName)        Dockerfile: 'Dockerfile'
+
+EOF        tags: |
+
+      displayName: 'Deploy Application'          $(imageTag)
           latest
         arguments: '--no-cache --pull'
     
