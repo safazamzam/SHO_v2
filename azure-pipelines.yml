@@ -119,7 +119,6 @@ stages:
   jobs:
   - deployment: DeployToGCP
     displayName: 'Deploy to Google Cloud VM'
-    environment: 'production-gcp'
     pool:
       vmImage: 'ubuntu-latest'
     
