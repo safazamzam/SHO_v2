@@ -1,0 +1,74 @@
+name: Deploy Shift Handover App
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Build and test
+      run: |
+        echo "Running basic application tests..."
+        python -c "import app; print('✅ App imports successfully')"
+    
+    - name: Login to Azure Container Registry
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
+    
+    - name: Build and push Docker image
+      run: |
+        export imageTag="${GITHUB_RUN_NUMBER}"
+        export fullImageName="${{ secrets.ACR_LOGIN_SERVER }}/${{ secrets.DOCKER_REPOSITORY }}:$imageTag"
+        
+        docker build -t ${{ secrets.DOCKER_REPOSITORY }}:$imageTag .
+        docker tag ${{ secrets.DOCKER_REPOSITORY }}:$imageTag $fullImageName
+        docker push $fullImageName
+        
+        echo "IMAGE_TAG=$imageTag" >> $GITHUB_ENV
+        echo "FULL_IMAGE_NAME=$fullImageName" >> $GITHUB_ENV
+    
+    - name: Deploy to GCP VM
+      run: |
+        echo "Starting deployment to GCP VM..."
+        
+        # Setup SSH key
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H 35.200.202.18 >> ~/.ssh/known_hosts
+        
+        # Deploy via SSH
+        ssh -o StrictHostKeyChecking=no shifthandoversajid@35.200.202.18 << 'EOF'
+          sudo docker stop shift-handover-app || true
+          sudo docker rm shift-handover-app || true
+          sudo docker pull ${{ env.FULL_IMAGE_NAME }}
+          sudo docker run -d --name shift-handover-app --restart unless-stopped -p 80:5000 ${{ env.FULL_IMAGE_NAME }}
+          
+          # Verify deployment
+          if sudo docker ps | grep -q shift-handover-app; then
+            echo "✅ Container is running"
+          else
+            echo "❌ Container failed to start"
+            exit 1
+          fi
+        EOF

@@ -11,7 +11,9 @@ stages:
   - job: BuildJob
     displayName: 'Build and Test'
     pool:
-      vmImage: 'ubuntu-latest'
+      name: 'Default'
+      demands:
+      - agent.name -equals SelfHostedAgent
     steps:
     - checkout: self
     - script: echo 'Build completed'
@@ -24,7 +26,9 @@ stages:
   - job: DeployJob
     displayName: 'Deploy to GCP VM'
     pool:
-      vmImage: 'ubuntu-latest'
+      name: 'Default'
+      demands:
+      - agent.name -equals SelfHostedAgent
     steps:
     - checkout: none
     - script: echo 'Deploy completed'
