@@ -13,7 +13,7 @@ stages:
     pool:
       name: 'Default'
       demands:
-      - agent.name -equals SelfHostedAgent
+      - agent.name -equals GCP-SelfHostedAgent
     steps:
     - checkout: self
     - script: echo 'Build completed'
@@ -28,7 +28,7 @@ stages:
     pool:
       name: 'Default'
       demands:
-      - agent.name -equals SelfHostedAgent
+      - agent.name -equals GCP-SelfHostedAgent
     steps:
     - checkout: none
     - script: echo 'Deploy completed'
