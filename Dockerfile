@@ -20,6 +20,10 @@ RUN pip install --upgrade pip && pip install -r requirements.txt && pip install 
 # Copy project
 COPY . /app/
 
+# Copy and set executable permissions for startup script
+COPY start.sh /app/start.sh
+RUN chmod +x /app/start.sh
+
 # Expose port
 EXPOSE 5000
 
@@ -27,5 +31,5 @@ EXPOSE 5000
 ENV FLASK_APP=app.py
 ENV FLASK_RUN_HOST=0.0.0.0
 
-# Run the application
-CMD ["flask", "run"]
+# Run the application with database initialization
+CMD ["/app/start.sh"]
