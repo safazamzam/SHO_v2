@@ -56,34 +56,32 @@ stages:
     steps:
     - checkout: none
     
-    - task: DownloadSecureFile@1
-      name: sshkey
-      displayName: 'Download SSH Key'
-      inputs:
-        secureFile: 'gcp_ssh_key'
-    
     - script: |
-        chmod 600 $(sshkey.secureFilePath)
+        # Create SSH key from variable
+        echo "$(SSH_PRIVATE_KEY)" > ssh_key
+        chmod 600 ssh_key
         
         # Stop existing container if running
-        ssh -i $(sshkey.secureFilePath) -o StrictHostKeyChecking=no $(GCP_VM_USER)@$(GCP_VM_IP) "sudo docker stop shift-handover-app || true"
-        ssh -i $(sshkey.secureFilePath) -o StrictHostKeyChecking=no $(GCP_VM_USER)@$(GCP_VM_IP) "sudo docker rm shift-handover-app || true"
+        ssh -i ssh_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 $(GCP_VM_USER)@$(GCP_VM_IP) "sudo docker stop shift-handover-app || true"
+        ssh -i ssh_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 $(GCP_VM_USER)@$(GCP_VM_IP) "sudo docker rm shift-handover-app || true"
         
         # Pull and run new container
-        ssh -i $(sshkey.secureFilePath) -o StrictHostKeyChecking=no $(GCP_VM_USER)@$(GCP_VM_IP) "sudo docker login $(acrLoginServer) -u $(acrName) -p $(acrPassword)"
-        ssh -i $(sshkey.secureFilePath) -o StrictHostKeyChecking=no $(GCP_VM_USER)@$(GCP_VM_IP) "sudo docker pull $(acrLoginServer)/$(dockerRepository):$(imageTag)"
-        ssh -i $(sshkey.secureFilePath) -o StrictHostKeyChecking=no $(GCP_VM_USER)@$(GCP_VM_IP) "sudo docker run -d --name shift-handover-app -p 5000:5000 --restart unless-stopped $(acrLoginServer)/$(dockerRepository):$(imageTag)"
+        ssh -i ssh_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 $(GCP_VM_USER)@$(GCP_VM_IP) "sudo docker login $(acrLoginServer) -u $(acrName) -p $(acrPassword)"
+        ssh -i ssh_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 $(GCP_VM_USER)@$(GCP_VM_IP) "sudo docker pull $(acrLoginServer)/$(dockerRepository):$(imageTag)"
+        ssh -i ssh_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 $(GCP_VM_USER)@$(GCP_VM_IP) "sudo docker run -d --name shift-handover-app -p 5000:5000 --restart unless-stopped $(acrLoginServer)/$(dockerRepository):$(imageTag)"
         
         # Verify deployment
-        ssh -i $(sshkey.secureFilePath) -o StrictHostKeyChecking=no $(GCP_VM_USER)@$(GCP_VM_IP) "sudo docker ps | grep shift-handover-app"
+        ssh -i ssh_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 $(GCP_VM_USER)@$(GCP_VM_IP) "sudo docker ps | grep shift-handover-app"
       displayName: 'Deploy Docker Container'
     
     - script: |
-        chmod 600 $(sshkey.secureFilePath)
+        # Create SSH key from variable
+        echo "$(SSH_PRIVATE_KEY)" > ssh_key
+        chmod 600 ssh_key
         
         # Wait for app to start
         sleep 10
         
         # Health check
-        ssh -i $(sshkey.secureFilePath) -o StrictHostKeyChecking=no $(GCP_VM_USER)@$(GCP_VM_IP) "curl -f http://localhost:5000 || echo 'Health check failed'"
+        ssh -i ssh_key -o StrictHostKeyChecking=no -o ConnectTimeout=30 $(GCP_VM_USER)@$(GCP_VM_IP) "curl -f http://localhost:5000 || echo 'Health check failed'"
       displayName: 'Health Check'
