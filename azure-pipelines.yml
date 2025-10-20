@@ -13,7 +13,7 @@ stages:
     pool:
       name: 'Default'
       demands:
-      - agent.name -equals GCP-SelfHostedAgent
+      - agent.name -equals sajid-mohammad-shifthandoverappsajid
     steps:
     - checkout: self
     - script: echo 'Build completed'
@@ -28,7 +28,7 @@ stages:
     pool:
       name: 'Default'
       demands:
-      - agent.name -equals GCP-SelfHostedAgent
+      - agent.name -equals sajid-mohammad-shifthandoverappsajid
     steps:
     - checkout: none
     - script: echo 'Deploy completed'
