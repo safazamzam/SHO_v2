@@ -241,13 +241,32 @@ def dashboard():
         open_key_points = ShiftKeyPoint.query.filter_by(account_id=filter_account_id, team_id=filter_team_id).filter(
             ShiftKeyPoint.status.in_(['Open', 'In Progress'])
         ).all()
+        # Get priority incidents (High and Critical priority incidents that are still active)
+        priority_incidents = Incident.query.filter_by(
+            account_id=filter_account_id, 
+            team_id=filter_team_id,
+            status='Active'
+        ).filter(
+            or_(Incident.type == 'Priority', Incident.priority.in_(['High', 'Critical']))
+        ).all()
     elif filter_account_id:
         open_key_points = ShiftKeyPoint.query.filter_by(account_id=filter_account_id).filter(
             ShiftKeyPoint.status.in_(['Open', 'In Progress'])
         ).all()
+        # Get priority incidents for the account
+        priority_incidents = Incident.query.filter_by(
+            account_id=filter_account_id,
+            status='Active'
+        ).filter(
+            or_(Incident.type == 'Priority', Incident.priority.in_(['High', 'Critical']))
+        ).all()
     else:
         # For super admin without filters, show all open and in progress key points
         open_key_points = ShiftKeyPoint.query.filter(ShiftKeyPoint.status.in_(['Open', 'In Progress'])).all()
+        # Get all priority incidents
+        priority_incidents = Incident.query.filter_by(status='Active').filter(
+            or_(Incident.type == 'Priority', Incident.priority.in_(['High', 'Critical']))
+        ).all()
 
     # Chart logic
     range_opt = request.args.get('range', '7d')
@@ -291,13 +310,36 @@ def dashboard():
         priority_counts.append(priority_c)
 
     x_dates = [d.strftime('%Y-%m-%d') for d in date_list]
-    trace_open = go.Bar(x=x_dates, y=open_counts, name='Open Incidents')
-    trace_closed = go.Bar(x=x_dates, y=closed_counts, name='Closed Incidents')
-    trace_handover = go.Bar(x=x_dates, y=handover_counts, name='Handover Incidents')
-    trace_priority = go.Bar(x=x_dates, y=priority_counts, name='Priority Incidents')
+    trace_open = go.Bar(x=x_dates, y=open_counts, name='Open Incidents', marker_color='#3498db')
+    trace_closed = go.Bar(x=x_dates, y=closed_counts, name='Closed Incidents', marker_color='#2ecc71')
+    trace_handover = go.Bar(x=x_dates, y=handover_counts, name='Handover Incidents', marker_color='#f39c12')
+    trace_priority = go.Bar(x=x_dates, y=priority_counts, name='Priority Incidents', marker_color='#e74c3c')
     data = [trace_open, trace_closed, trace_handover, trace_priority]
-    layout = go.Layout(barmode='group', xaxis={'title': 'Date'}, yaxis={'title': 'Count'}, title='Incidents by Date')
+    layout = go.Layout(
+        barmode='group', 
+        xaxis={'title': 'Date'}, 
+        yaxis={'title': 'Count'}, 
+        title='Incident Trends Over Time',
+        height=400,
+        margin=dict(l=50, r=50, t=80, b=50)
+    )
     graphJSON = json.dumps({'data': data, 'layout': layout}, cls=plotly.utils.PlotlyJSONEncoder)
+
+    # Calculate priority distribution for pie chart
+    priority_distribution = {
+        'critical': 0,
+        'high': 0, 
+        'medium': 0,
+        'low': 0
+    }
+    
+    for incident in open_incidents:
+        if hasattr(incident, 'priority') and incident.priority:
+            priority_lower = incident.priority.lower()
+            if priority_lower in priority_distribution:
+                priority_distribution[priority_lower] += 1
+            elif priority_lower == 'urgent':  # Handle alternate naming
+                priority_distribution['critical'] += 1
 
     return render_template(
         'dashboard.html',
@@ -309,6 +351,8 @@ def dashboard():
         current_engineers=current_engineers,
         next_shift_engineers=next_shift_engineers,
         open_key_points=open_key_points,
+        priority_incidents=priority_incidents,
+        priority_distribution=priority_distribution,
         current_shift_type=current_shift_type,
         next_shift_type=next_shift_type,
         today=today,

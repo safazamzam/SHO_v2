@@ -87,19 +87,165 @@ def user_management():
                 flash('Account not found.')
             return redirect(url_for('user_mgmt.user_management'))
         elif action == 'add_account' and current_user.role == 'super_admin':
-            # ...existing code...
+            account_name = request.form.get('account_name')
+            print(f"[DEBUG] Add Account: account_name={account_name}")
+            
+            if account_name:
+                existing_account = Account.query.filter_by(name=account_name).first()
+                if existing_account:
+                    flash('Account name already exists.')
+                else:
+                    try:
+                        account = Account(
+                            name=account_name,
+                            status='active',
+                            is_active=True
+                        )
+                        db.session.add(account)
+                        db.session.commit()
+                        log_action('Add Account', f'Account: {account_name}')
+                        flash('Account added successfully.')
+                        print(f"[SUCCESS] Account created: {account}")
+                    except Exception as e:
+                        db.session.rollback()
+                        print(f"[ERROR] Failed to create account: {e}")
+                        flash('Failed to add account.')
+            else:
+                flash('Account name is required.')
             return redirect(url_for('user_mgmt.user_management'))
+            
         elif action == 'add_team' and (current_user.role == 'super_admin' or current_user.role == 'account_admin'):
-            # ...existing code...
+            team_name = request.form.get('team_name')
+            account_id = request.form.get('account_id', type=int)
+            print(f"[DEBUG] Add Team: team_name={team_name}, account_id={account_id}")
+            
+            if team_name and account_id:
+                # Check permission
+                if current_user.role == 'account_admin' and account_id != current_user.account_id:
+                    flash('You can only add teams to your own account.')
+                    return redirect(url_for('user_mgmt.user_management'))
+                
+                existing_team = Team.query.filter_by(name=team_name, account_id=account_id).first()
+                if existing_team:
+                    flash('Team name already exists in this account.')
+                else:
+                    try:
+                        team = Team(
+                            name=team_name,
+                            account_id=account_id,
+                            status='active',
+                            is_active=True
+                        )
+                        db.session.add(team)
+                        db.session.commit()
+                        log_action('Add Team', f'Team: {team_name}, Account ID: {account_id}')
+                        flash('Team added successfully.')
+                        print(f"[SUCCESS] Team created: {team}")
+                    except Exception as e:
+                        db.session.rollback()
+                        print(f"[ERROR] Failed to create team: {e}")
+                        flash('Failed to add team.')
+            else:
+                flash('Team name and account are required.')
             return redirect(url_for('user_mgmt.user_management'))
+        
+        elif action == 'edit_user':
+            user_id = request.form.get('user_id', type=int)
+            user = User.query.get(user_id)
+            print(f"[DEBUG] Edit User: user_id={user_id}, user={user}")
+            
+            if user:
+                # Check permission to edit this user
+                can_edit = False
+                if current_user.role == 'super_admin':
+                    can_edit = True
+                elif current_user.role == 'account_admin' and user.account_id == current_user.account_id and user.role != 'super_admin':
+                    can_edit = True
+                elif current_user.role == 'team_admin' and user.account_id == current_user.account_id and user.team_id == current_user.team_id and user.role == 'user':
+                    can_edit = True
+                
+                if can_edit:
+                    try:
+                        # Get form data
+                        new_username = request.form.get('username')
+                        new_email = request.form.get('email')
+                        new_role = request.form.get('role')
+                        new_account_id = request.form.get('account_id', type=int)
+                        new_team_id = request.form.get('team_id', type=int) if request.form.get('team_id') else None
+                        new_password = request.form.get('password')
+                        new_first_name = request.form.get('first_name', '').strip()
+                        new_last_name = request.form.get('last_name', '').strip()
+                        
+                        print(f"[DEBUG] Edit form data: username={new_username}, email={new_email}, role={new_role}, account_id={new_account_id}, team_id={new_team_id}, first_name={new_first_name}, last_name={new_last_name}")
+                        
+                        # Validate required fields
+                        if not new_username:
+                            flash('Username is required.')
+                            return redirect(url_for('user_mgmt.user_management'))
+                        
+                        # Check username uniqueness (if changed)
+                        if new_username != user.username:
+                            existing_user = User.query.filter_by(username=new_username).first()
+                            if existing_user:
+                                flash('Username already exists.')
+                                return redirect(url_for('user_mgmt.user_management'))
+                        
+                        # Validate role permissions
+                        if current_user.role == 'account_admin' and new_role == 'super_admin':
+                            flash('Account admins cannot assign super admin role.')
+                            return redirect(url_for('user_mgmt.user_management'))
+                        elif current_user.role == 'team_admin' and new_role != 'user':
+                            flash('Team admins can only assign user role.')
+                            return redirect(url_for('user_mgmt.user_management'))
+                        
+                        # Validate account/team permissions
+                        if current_user.role == 'account_admin' and new_account_id != current_user.account_id:
+                            flash('You can only assign users to your own account.')
+                            return redirect(url_for('user_mgmt.user_management'))
+                        elif current_user.role == 'team_admin' and (new_account_id != current_user.account_id or new_team_id != current_user.team_id):
+                            flash('You can only assign users to your own account and team.')
+                            return redirect(url_for('user_mgmt.user_management'))
+                        
+                        # Update user fields
+                        user.username = new_username
+                        if new_email:
+                            user.email = new_email
+                        user.role = new_role
+                        user.account_id = new_account_id
+                        user.team_id = new_team_id
+                        user.first_name = new_first_name if new_first_name else None
+                        user.last_name = new_last_name if new_last_name else None
+                        
+                        # Update password if provided
+                        if new_password:
+                            user.password = generate_password_hash(new_password)
+                        
+                        db.session.commit()
+                        log_action('Edit User', f'User ID: {user_id}, Username: {new_username}, Role: {new_role}, Account: {new_account_id}, Team: {new_team_id}')
+                        flash('User updated successfully.')
+                        print(f"[SUCCESS] User updated: {user}")
+                        
+                    except Exception as e:
+                        db.session.rollback()
+                        print(f"[ERROR] Failed to update user: {e}")
+                        flash('Failed to update user.')
+                else:
+                    flash('You do not have permission to edit this user.')
+            else:
+                flash('User not found.')
+            
+            return redirect(url_for('user_mgmt.user_management'))
+        
         elif action == 'add':
             username = request.form.get('username')
             password = request.form.get('password')
             role = request.form.get('role')
             account_id = request.form.get('account_id', type=int)
             team_id = request.form.get('team_id', type=int)
+            first_name = request.form.get('first_name', '').strip()
+            last_name = request.form.get('last_name', '').strip()
             debug_msgs = []
-            debug_msgs.append(f"[DEBUG] Add User: username={username}, role={role}, account_id={account_id}, team_id={team_id}")
+            debug_msgs.append(f"[DEBUG] Add User: username={username}, role={role}, account_id={account_id}, team_id={team_id}, first_name={first_name}, last_name={last_name}")
             try:
                 if username and password and role and account_id:
                     existing_user = User.query.filter_by(username=username).first()
@@ -112,7 +258,17 @@ def user_management():
                         if current_user.role == 'super_admin' or \
                            (current_user.role == 'account_admin' and account_id == current_user.account_id) or \
                            (current_user.role == 'team_admin' and account_id == current_user.account_id and team_id == current_user.team_id):
-                            user = User(username=username, password=generate_password_hash(password), role=role, account_id=account_id, team_id=team_id if team_id else None, status='active', is_active=True)
+                            user = User(
+                                username=username, 
+                                password=generate_password_hash(password), 
+                                role=role, 
+                                account_id=account_id, 
+                                team_id=team_id if team_id else None, 
+                                status='active', 
+                                is_active=True,
+                                first_name=first_name if first_name else None,
+                                last_name=last_name if last_name else None
+                            )
                             db.session.add(user)
                             db.session.flush()
                             debug_msgs.append(f"[DEBUG] User (before commit): id={user.id}, username={user.username}")

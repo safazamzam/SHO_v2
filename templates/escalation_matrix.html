@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container-fluid px-0">
+    {% if current_user.role in ['super_admin', 'account_admin', 'team_admin'] %}
     <div class="card shadow-sm p-4 mb-4">
         <h2 class="mb-4">Escalation Matrix Upload</h2>
         <form method="POST" enctype="multipart/form-data" class="mb-4">
@@ -14,6 +15,7 @@
             </div>
         </form>
     </div>
+    {% endif %}
     <div class="card shadow-sm p-4 mb-4">
         <h2 class="mb-4">Escalation Matrix Filter</h2>
         {% if current_user.role == 'super_admin' %}

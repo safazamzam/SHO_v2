@@ -40,9 +40,9 @@
             box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3);
         }
         .sidebar .nav-link.active {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
             color: #fff;
-            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.3);
+            box-shadow: 0 5px 15px rgba(116, 185, 255, 0.3);
         }
         .sidebar .menu-section {
             font-size: 0.85em;
@@ -80,7 +80,7 @@
             right: 5px;
             width: 8px;
             height: 8px;
-            background: #e74c3c;
+            background: #55efc4;
             border-radius: 50%;
             animation: pulse 2s infinite;
         }
@@ -126,12 +126,14 @@
                                 <span>Shift Roster</span>
                             </a>
                         </li>
+                        {% if current_user.role in ['super_admin', 'account_admin', 'team_admin'] %}
                         <li class="nav-item">
                             <a class="nav-link {{ 'active' if is_nav_active('/roster-upload') else '' }}" href="/roster-upload">
                                 <i class="bi bi-cloud-upload"></i>
                                 <span>Roster Upload</span>
                             </a>
                         </li>
+                        {% endif %}
                         <li class="nav-item">
                             <a class="nav-link {{ 'active' if is_nav_active('/team') else '' }}" href="/team">
                                 <i class="bi bi-people"></i>
@@ -140,7 +142,7 @@
                         </li>
                         
                         <div class="menu-section">🔧 Tools</div>
-                        {% if is_feature_enabled('feature_servicenow_integration') %}
+                        {% if is_feature_enabled('feature_servicenow_integration') and current_user.role in ['super_admin', 'account_admin', 'team_admin'] %}
                         <li class="nav-item">
                             <a class="nav-link {{ 'active' if is_nav_active('/servicenow') else '' }}" href="/servicenow">
                                 <i class="bi bi-cloud-arrow-down"></i>
@@ -160,7 +162,7 @@
                                 <span>Key Points</span>
                             </a>
                         </li>
-                        {% if is_feature_enabled('feature_ctask_assignment') %}
+                        {% if is_feature_enabled('feature_ctask_assignment') and current_user.role in ['super_admin', 'account_admin', 'team_admin'] %}
                         <li class="nav-item">
                             <a class="nav-link {{ 'active' if is_nav_active('/ctask-assignment') else '' }}" href="/ctask-assignment">
                                 <i class="bi bi-person-check"></i>

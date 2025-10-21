@@ -30,8 +30,19 @@ def feature_required(feature_name):
         return decorated_function
     return decorator
 
+def admin_required(f):
+    """Decorator to check if user has admin privileges (super_admin, account_admin, or team_admin)"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role not in ['super_admin', 'account_admin', 'team_admin']:
+            flash('Access denied. Administrator privileges required.', 'error')
+            return redirect(url_for('dashboard.dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 @ctask_assignment_bp.route('/ctask-assignment')
 @login_required
+@admin_required
 @feature_required('feature_ctask_assignment')
 def ctask_assignment_dashboard():
     """CTask Assignment Dashboard"""
@@ -55,6 +66,7 @@ def ctask_assignment_dashboard():
 
 @ctask_assignment_bp.route('/assign-ctask', methods=['POST'])
 @login_required
+@admin_required
 def assign_ctask():
     """Assign a specific CTask to engineer based on planned time"""
     try:
@@ -94,6 +106,7 @@ def assign_ctask():
 
 @ctask_assignment_bp.route('/find-engineer', methods=['POST'])
 @login_required
+@admin_required
 def find_engineer():
     """Find engineer on duty for specific date and time"""
     try:
@@ -135,6 +148,7 @@ def find_engineer():
 
 @ctask_assignment_bp.route('/process-pending-ctasks', methods=['POST'])
 @login_required
+@admin_required
 def process_pending_ctasks():
     """Process all pending CTasks for auto-assignment"""
     try:

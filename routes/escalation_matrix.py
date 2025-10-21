@@ -2,21 +2,35 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 import os
 import pandas as pd
+from functools import wraps
 
 UPLOAD_FOLDER = 'uploads/escalation_matrix'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 escalation_bp = Blueprint('escalation_matrix', __name__)
 
+def admin_required_for_upload(f):
+    """Decorator to check upload permissions for escalation matrix"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # For POST requests (uploads), require admin privileges
+        if request.method == 'POST':
+            if not current_user.is_authenticated or current_user.role not in ['super_admin', 'account_admin', 'team_admin']:
+                flash('Access denied. Administrator privileges required for uploading.', 'error')
+                return redirect(url_for('escalation_matrix.escalation_matrix'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 @escalation_bp.route('/escalation-matrix', methods=['GET', 'POST'])
 @login_required
+@admin_required_for_upload
 def escalation_matrix():
     app_names = []
     matrix_data = None
     selected_app = request.args.get('application')
     if request.method == 'POST':
-        if current_user.role == 'viewer':
-            flash('You do not have permission to upload escalation matrix.')
+        if current_user.role not in ['super_admin', 'account_admin', 'team_admin']:
+            flash('Access denied. Administrator privileges required for uploading.', 'error')
             return redirect(url_for('escalation_matrix.escalation_matrix'))
         file = request.files.get('file')
         # Always use current user's account/team for upload mapping

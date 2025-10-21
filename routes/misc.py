@@ -22,8 +22,19 @@ def feature_required(feature_name):
         return decorated_function
     return decorator
 
+def admin_required(f):
+    """Decorator to check if user has admin privileges (super_admin, account_admin, or team_admin)"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role not in ['super_admin', 'account_admin', 'team_admin']:
+            flash('Access denied. Administrator privileges required.', 'error')
+            return redirect(url_for('dashboard.dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 @misc_bp.route('/servicenow')
 @login_required
+@admin_required
 @feature_required('feature_servicenow_integration')
 def servicenow():
     """ServiceNow configuration and testing page"""
@@ -475,6 +486,7 @@ def change_management_new():
 
 @misc_bp.route('/api/servicenow/test-connection', methods=['POST'])
 @login_required
+@admin_required
 @feature_required('feature_servicenow_integration')
 def test_servicenow_connection():
     """Test ServiceNow connection endpoint"""
@@ -519,6 +531,7 @@ def test_servicenow_connection():
 
 @misc_bp.route('/servicenow/fetch-shift-incidents', methods=['GET'])
 @login_required
+@admin_required
 @feature_required('feature_servicenow_integration')
 def fetch_shift_incidents():
     """Fetch ServiceNow incidents for selected shift period"""

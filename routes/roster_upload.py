@@ -6,6 +6,7 @@ from flask_login import login_required, current_user
 import pandas as pd
 from werkzeug.utils import secure_filename
 import os
+from functools import wraps
 from models.models import db, TeamMember, ShiftRoster, Account, Team
 
 # Setup logging
@@ -18,8 +19,19 @@ UPLOAD_FOLDER = 'uploads/roster'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 ALLOWED_EXTENSIONS = {'xlsx'}
 
+def admin_required(f):
+    """Decorator to check if user has admin privileges (super_admin, account_admin, or team_admin)"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.role not in ['super_admin', 'account_admin', 'team_admin']:
+            flash('Access denied. Administrator privileges required.', 'error')
+            return redirect(url_for('dashboard.dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 @roster_upload_bp.route('/roster-upload', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def roster_upload():
     table_data = None
     if request.method == 'POST':

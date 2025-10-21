@@ -48,6 +48,31 @@ temp/
 # Database files
 *.sqlite
 *.sqlite3
+
+# SSH Keys and Credentials
+*.pem
+*.key
+*_key
+*_key.pub
+gcp_ssh_key
+gcp_ssh_key.pub
+
+# Sensitive Files
+*.sql
+*password*
+*secret*
+*credentials*
+
+# Azure DevOps
+.azure/
+
+# Coverage reports
+htmlcov/
+.coverage
+.pytest_cache/
+
+# SSO Debug logs
+sso_claims_debug.log
 *.db
 
 # Build files

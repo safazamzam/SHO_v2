@@ -14,7 +14,7 @@
     <!-- Compact Statistics Cards -->
     <div class="row g-3 mb-4">
         <div class="col-lg-3 col-md-6">
-            <div class="dashboard-stats-compact" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);">
+            <div class="dashboard-stats-compact" style="background: linear-gradient(135deg, #a8e6cf 0%, #7fcdcd 100%);">
                 <div class="d-flex align-items-center">
                     <div class="stat-icon-compact">🚨</div>
                     <div class="flex-grow-1">
@@ -28,34 +28,34 @@
             </div>
         </div>
         <div class="col-lg-3 col-md-6">
-            <div class="dashboard-stats-compact" style="background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);">
+            <div class="dashboard-stats-compact" style="background: linear-gradient(135deg, #ffb3b3 0%, #ff8c8c 100%);">
                 <div class="d-flex align-items-center">
-                    <div class="stat-icon-compact">👥</div>
+                    <div class="stat-icon-compact">⚠️</div>
                     <div class="flex-grow-1">
-                        <div class="stat-number-compact">{{ current_engineers|length }}</div>
-                        <div class="stat-label-compact">On Duty Now</div>
+                        <div class="stat-number-compact">{{ priority_incidents|length }}</div>
+                        <div class="stat-label-compact">Priority Incidents</div>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-lg-3 col-md-6">
-            <div class="dashboard-stats-compact" style="background: linear-gradient(135deg, #45b7d1 0%, #96c93d 100%);">
-                <div class="d-flex align-items-center">
-                    <div class="stat-icon-compact">📋</div>
-                    <div class="flex-grow-1">
-                        <div class="stat-number-compact">{{ open_key_points|length }}</div>
-                        <div class="stat-label-compact">Pending Actions</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-lg-3 col-md-6">
-            <div class="dashboard-stats-compact" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="dashboard-stats-compact" style="background: linear-gradient(135deg, #ffb3d9 0%, #ff9ac5 100%);">
                 <div class="d-flex align-items-center">
                     <div class="stat-icon-compact">⏰</div>
                     <div class="flex-grow-1">
                         <div class="stat-number-compact" id="shift-countdown">{{ current_shift_type }}</div>
                         <div class="stat-label-compact">Current Shift</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="dashboard-stats-compact" style="background: linear-gradient(135deg, #b8e6b8 0%, #9dd99d 100%);">
+                <div class="d-flex align-items-center">
+                    <div class="stat-icon-compact">👥</div>
+                    <div class="flex-grow-1">
+                        <div class="stat-number-compact">{{ current_engineers|length }}</div>
+                        <div class="stat-label-compact">On Duty Now</div>
                     </div>
                 </div>
             </div>
@@ -162,6 +162,47 @@
         <div class="col-12">
             <div class="metric-card">
                 <h5 class="d-flex align-items-center mb-3">
+                    <i class="bi bi-exclamation-triangle text-danger me-2"></i>
+                    Priority Incidents (High & Critical)
+                    {% if priority_incidents|length > 0 %}
+                    <span class="badge bg-danger text-white ms-2">{{ priority_incidents|length }}</span>
+                    {% endif %}
+                </h5>
+                {% if priority_incidents %}
+                <div class="list-group">
+                    {% for incident in priority_incidents %}
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>{{ incident.title }}</strong>
+                            <br>
+                            <small class="text-muted">{{ incident.description if incident.description else 'No description available' }}</small>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-{{ 'danger' if incident.priority == 'Critical' else 'warning' }} me-1">
+                                {{ incident.priority }}
+                            </span>
+                            <span class="badge bg-{{ 'danger' if incident.type == 'Priority' else 'info' }}">
+                                {{ incident.type }}
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-check-circle text-success" style="font-size: 2rem;"></i>
+                    <p class="text-muted mt-2 mb-0">No priority incidents at the moment!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Open Key Points (Pending Actions) Section -->
+    <div class="row g-3 mt-3">
+        <div class="col-12">
+            <div class="metric-card">
+                <h5 class="d-flex align-items-center mb-3">
                     <i class="bi bi-list-check text-warning me-2"></i>
                     Pending Action Items (Open & In Progress)
                     {% if open_key_points|length > 0 %}
@@ -227,11 +268,46 @@
             
             <!-- Charts Row -->
             <div class="row g-4">
-                <div class="col-lg-8">
-                    <div id="main-chart" style="height: 400px;"></div>
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Incident Trends</h5>
+                            <div id="main-chart" style="height: 400px; width: 100%;"></div>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-lg-4">
-                    <div id="incident-pie-chart" style="height: 400px;"></div>
+            </div>
+            
+            <!-- Secondary Charts Row -->
+            <div class="row g-4 mt-2">
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Priority Distribution</h5>
+                            <div id="incident-pie-chart" style="height: 300px;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Summary Stats</h5>
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <h3 class="text-primary">{{ open_incidents|length }}</h3>
+                                    <small class="text-muted">Open</small>
+                                </div>
+                                <div class="col-4">
+                                    <h3 class="text-success">{{ priority_incidents|length }}</h3>
+                                    <small class="text-muted">Priority</small>
+                                </div>
+                                <div class="col-4">
+                                    <h3 class="text-warning">{{ open_key_points|length }}</h3>
+                                    <small class="text-muted">Actions</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -268,50 +344,94 @@
         });
 
         // Enhanced Plotly Charts
-        if (typeof window.graphJSON !== 'undefined' && window.graphJSON) {
-            const graphJSON = window.graphJSON;
-            if (typeof graphJSON === 'object') {
-                Plotly.newPlot('main-chart', graphJSON.data, graphJSON.layout, {responsive: true});
+        try {
+            // Use the graphJSON data passed from the backend
+            const graphData = {{ graphJSON|safe }};
+            if (graphData && graphData.data && graphData.layout) {
+                // Enhance layout for better display
+                graphData.layout.height = 400;
+                graphData.layout.margin = {t: 50, r: 50, b: 50, l: 50};
+                graphData.layout.showlegend = true;
+                graphData.layout.legend = {x: 0, y: 1};
+                
+                Plotly.newPlot('main-chart', graphData.data, graphData.layout, {responsive: true, displayModeBar: false});
             } else {
-                const parsed = typeof graphJSON === 'string' ? JSON.parse(graphJSON) : graphJSON;
-                Plotly.newPlot('main-chart', parsed.data, parsed.layout, {responsive: true});
+                throw new Error('No graph data available');
             }
-        } else {
+        } catch (error) {
+            console.log('Using default chart data:', error);
             // Default chart if no data
             const defaultData = [{
                 x: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
                 y: [2, 1, 3, 0, 4, 1, 2],
                 type: 'scatter',
                 mode: 'lines+markers',
-                name: 'Incidents',
-                line: {color: '#ff6b6b'}
+                name: 'Sample Incidents',
+                line: {color: '#ff6b6b'},
+                marker: {color: '#ff6b6b', size: 8}
             }];
             const defaultLayout = {
-                title: 'Incident Trends',
+                title: 'Incident Trends (Sample Data)',
                 xaxis: {title: 'Day'},
                 yaxis: {title: 'Count'},
-                margin: {t: 50, r: 50, b: 50, l: 50}
+                height: 400,
+                margin: {t: 50, r: 50, b: 50, l: 50},
+                showlegend: true
             };
-            Plotly.newPlot('main-chart', defaultData, defaultLayout, {responsive: true});
+            Plotly.newPlot('main-chart', defaultData, defaultLayout, {responsive: true, displayModeBar: false});
         }
 
         // Incident Priority Pie Chart
-        const incidentData = [{
-            values: [{{ open_incidents|selectattr('priority', 'equalto', 'high')|list|length }}, 
-                     {{ open_incidents|selectattr('priority', 'equalto', 'medium')|list|length }}, 
-                     {{ open_incidents|selectattr('priority', 'equalto', 'low')|list|length }}],
-            labels: ['High', 'Medium', 'Low'],
-            type: 'pie',
-            marker: {
-                colors: ['#ff4757', '#ffa502', '#2ed573']
-            }
-        }];
-        const incidentLayout = {
-            title: 'Incident Priority Distribution',
-            margin: {t: 40, r: 20, b: 20, l: 20},
-            showlegend: false
-        };
-        Plotly.newPlot('incident-pie-chart', incidentData, incidentLayout, {responsive: true});
+        try {
+            const priorityData = {{ priority_distribution|safe }};
+            const incidentData = [{
+                values: [
+                    priorityData.critical || 0,
+                    priorityData.high || 0,
+                    priorityData.medium || 0,
+                    priorityData.low || 0
+                ],
+                labels: ['Critical', 'High', 'Medium', 'Low'],
+                type: 'pie',
+                marker: {
+                    colors: ['#e74c3c', '#f39c12', '#f1c40f', '#2ecc71']
+                },
+                textinfo: 'label+percent',
+                textposition: 'outside'
+            }];
+            
+            const incidentLayout = {
+                title: 'Priority Distribution',
+                margin: {t: 40, r: 40, b: 40, l: 40},
+                showlegend: true,
+                legend: {
+                    orientation: 'h',
+                    x: 0.5,
+                    xanchor: 'center',
+                    y: -0.1
+                },
+                height: 300
+            };
+            
+            Plotly.newPlot('incident-pie-chart', incidentData, incidentLayout, {responsive: true, displayModeBar: false});
+        } catch (error) {
+            console.log('Error creating pie chart:', error);
+            // Simple fallback pie chart
+            const fallbackData = [{
+                values: [{{ priority_incidents|length }}, {{ open_incidents|length - priority_incidents|length }}],
+                labels: ['Priority', 'Regular'],
+                type: 'pie',
+                marker: {
+                    colors: ['#e74c3c', '#3498db']
+                }
+            }];
+            const fallbackLayout = {
+                title: 'Incident Distribution',
+                margin: {t: 40, r: 40, b: 40, l: 40},
+                height: 300
+            };
+            Plotly.newPlot('incident-pie-chart', fallbackData, fallbackLayout, {responsive: true, displayModeBar: false});
+        }
 
         // Auto-refresh functionality
         setTimeout(function() {

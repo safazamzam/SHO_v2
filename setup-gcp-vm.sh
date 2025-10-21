@@ -104,7 +104,7 @@ if [ -d "/opt/shift-handover-uploads" ]; then
     tar -czf $BACKUP_DIR/uploads_$TIMESTAMP.tar.gz -C /opt/shift-handover-uploads .
 fi
 
-# Keep only last 7 days of backups
+# Keep only last 7 days of backups  c
 find $BACKUP_DIR -name "*.db" -mtime +7 -delete
 find $BACKUP_DIR -name "*.tar.gz" -mtime +7 -delete
 

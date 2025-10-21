@@ -47,6 +47,38 @@ class User(db.Model, UserMixin):
     status = db.Column(db.String(16), nullable=False, default='active')  # 'active', 'disabled'
     account_id = db.Column(db.Integer, db.ForeignKey('account.id'), nullable=True)
     team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=True)
+    
+    # New fields for better user display
+    first_name = db.Column(db.String(64), nullable=True)
+    last_name = db.Column(db.String(64), nullable=True)
+    profile_picture = db.Column(db.String(255), nullable=True)  # URL to profile picture
+    
+    @property
+    def display_name(self):
+        """Return a user-friendly display name"""
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        elif self.first_name:
+            return self.first_name
+        elif self.last_name:
+            return self.last_name
+        else:
+            # Fallback: convert email to a readable name
+            name_part = self.email.split('@')[0].replace('_', ' ').replace('.', ' ')
+            return ' '.join(word.capitalize() for word in name_part.split())
+    
+    @property
+    def initials(self):
+        """Return user initials for avatar fallback"""
+        if self.first_name and self.last_name:
+            return f"{self.first_name[0]}{self.last_name[0]}".upper()
+        elif self.first_name:
+            return self.first_name[0].upper()
+        elif self.last_name:
+            return self.last_name[0].upper()
+        else:
+            # Fallback: use first two letters of username
+            return self.username[:2].upper() if len(self.username) >= 2 else self.username.upper()
 
 class TeamMember(db.Model):
     id = db.Column(db.Integer, primary_key=True)

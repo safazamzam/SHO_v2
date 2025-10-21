@@ -306,11 +306,14 @@ def perform_provider_test(provider_type, config):
             import requests
             auth_endpoint = config.get('auth_endpoint') or config.get('authorization_endpoint')
             if auth_endpoint:
-                response = requests.head(auth_endpoint, timeout=10)
-                if response.status_code in [200, 405]:  # 405 is OK for HEAD on auth endpoint
-                    return {'success': True, 'message': 'OAuth endpoints accessible'}
-                else:
-                    return {'success': False, 'error': f'OAuth endpoint returned {response.status_code}'}
+                try:
+                    response = requests.head(auth_endpoint, timeout=10)
+                    if response.status_code in [200, 400, 405]:  # 400 is OK for OAuth endpoints (missing required params)
+                        return {'success': True, 'message': 'OAuth endpoints accessible'}
+                    else:
+                        return {'success': False, 'error': f'OAuth endpoint "{auth_endpoint}" returned {response.status_code}'}
+                except Exception as e:
+                    return {'success': False, 'error': f'Failed to test OAuth endpoint "{auth_endpoint}": {str(e)}'}
             else:
                 return {'success': True, 'message': 'Configuration saved (no endpoints to test)'}
         

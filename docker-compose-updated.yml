@@ -1,4 +1,4 @@
-version: '3.8'
+version: '3.3'
 
 services:
   db:
@@ -21,6 +21,8 @@ services:
       - .:/app
     ports:
       - "5000:5000"
+    env_file:
+      - .env
     environment:
       - FLASK_ENV=development
       - DATABASE_URI=mysql+pymysql://user:password@db/shift_handover
@@ -29,7 +31,6 @@ services:
       - SMTP_USERNAME=mdsajid020@gmail.com
       - SMTP_PASSWORD=uovrivxvitovrjcu
       - TEAM_EMAIL=mdsajid020@gmail.com
-      - SSO_ENCRYPTION_KEY=crEMXD5xdXNui5q8dEQ25A1WHdXqxc4FKPwacV3O_Qk=
     depends_on:
       - db
 

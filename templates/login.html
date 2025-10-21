@@ -272,7 +272,7 @@
         .divider {
             position: relative;
             text-align: center;
-            margin: 20px 0;
+            margin: 30px 0;
         }
         
         .divider::before {
@@ -282,15 +282,16 @@
             left: 0;
             right: 0;
             height: 1px;
-            background: #e2e8f0;
+            background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
             z-index: 1;
         }
         
         .divider span {
             background: white;
-            padding: 0 16px;
-            color: #718096;
-            font-size: 14px;
+            padding: 0 20px;
+            color: #667eea;
+            font-size: 15px;
+            font-weight: 600;
             position: relative;
             z-index: 2;
         }
@@ -305,54 +306,63 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
-            padding: 12px 16px;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
+            gap: 15px;
+            padding: 18px 24px;
+            border: 2px solid transparent;
+            border-radius: 12px;
             text-decoration: none;
-            font-weight: 500;
-            transition: all 0.2s ease;
-            background: white;
+            font-weight: 600;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .sso-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .sso-button:hover::before {
+            left: 100%;
         }
         
         .sso-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
             text-decoration: none;
+            color: white;
         }
         
         .sso-button.google {
-            color: #ea4335;
-            border-color: #ea4335;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: 2px solid transparent;
         }
         
         .sso-button.google:hover {
-            background: #ea4335;
-            color: white;
-        }
-        
-        .sso-button.microsoft {
-            color: #0078d4;
-            border-color: #0078d4;
-        }
-        
-        .sso-button.microsoft:hover {
-            background: #0078d4;
-            color: white;
-        }
-        
-        .sso-button.enterprise {
-            color: #6b7280;
-            border-color: #6b7280;
-        }
-        
-        .sso-button.enterprise:hover {
-            background: #6b7280;
+            background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
             color: white;
         }
         
         .sso-button i {
-            font-size: 18px;
+            font-size: 22px;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+        }
+        
+        .sso-button span {
+            font-size: 16px;
+            letter-spacing: 0.5px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         }
         
         /* Responsive Design */
@@ -460,23 +470,18 @@
                 </form>
                 
                 <!-- SSO Options -->
-                <div class="sso-options" style="margin-top: 20px;">
-                    <div class="divider">
-                        <span>Or sign in with</span>
-                    </div>
+                <div class="divider">
+                    <span>Or sign in with</span>
+                </div>
+                <div class="sso-options" style="margin-top: 20px; padding: 25px; background: linear-gradient(135deg, #f8f9ff 0%, #f1f3ff 100%); border-radius: 15px; border: 1px solid rgba(102, 126, 234, 0.1);">
                     <div class="sso-buttons">
-                        <a href="/auth/sso/initiate/oauth?provider=google" class="sso-button google">
-                            <i class="fab fa-google"></i>
-                            <span>Google</span>
+                        <a href="/auth/sso/initiate/oauth" class="sso-button google">
+                            <i class="fas fa-building"></i>
+                            <span>EPAM Single Sign-On</span>
                         </a>
-                        <a href="/auth/sso/initiate/azure_ad" class="sso-button microsoft">
-                            <i class="fab fa-microsoft"></i>
-                            <span>Microsoft</span>
-                        </a>
-                        <a href="/auth/sso/initiate/saml" class="sso-button enterprise">
-                            <i class="fas fa-shield-alt"></i>
-                            <span>Enterprise SSO</span>
-                        </a>
+                    </div>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <small style="color: #667eea; font-weight: 500;">Secure authentication with your EPAM account</small>
                     </div>
                 </div>
                 
