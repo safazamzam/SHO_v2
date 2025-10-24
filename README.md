@@ -1,4 +1,4 @@
-# Shift Handover Application v2 - Azure DevOps Repository
+# Shift Handover Application v2 - GitLab Repository
 
 This is an enhanced Flask-based Shift Handover Application with comprehensive SSO (Single Sign-On) integration, automated ServiceNow CTask assignment, and modern dashboard features.
 
@@ -36,9 +36,9 @@ This is an enhanced Flask-based Shift Handover Application with comprehensive SS
 
 ### Local Development Setup
 ```bash
-# Clone from Azure DevOps
-git clone https://dev.azure.com/mdsajid020/shift_handover_v2/_git/shift_handover_v2
-cd shift_handover_v2
+# Clone from GitLab
+git clone https://git.garage.epam.com/shift-handover-automation/shifthandover.git
+cd shifthandover
 
 # Create and activate virtual environment
 python -m venv .venv
@@ -111,11 +111,11 @@ docker-compose -f docker-compose.prod.yml up --build
 - **Session Security**: Secure session management with proper timeouts
 - **Role-Based Access**: Admin-only access to sensitive configurations
 
-## 🌐 Azure DevOps Integration
-- **Repository**: https://dev.azure.com/mdsajid020/shift_handover_v2
-- **CI/CD Pipelines**: Automated build and deployment
-- **Branch Policies**: Protected main branch with pull request requirements
-- **Work Items**: Integration with Azure Boards for project management
+## 🌐 GitLab Integration
+- **Repository**: https://git.garage.epam.com/shift-handover-automation/shifthandover
+- **CI/CD Pipelines**: Available for automated build and deployment
+- **Merge Requests**: Code review and collaboration features
+- **Project Management**: Issue tracking and milestone management
 
 ## 📊 Monitoring & Logging
 - **Application Logs**: Comprehensive logging with rotating file handlers
@@ -125,9 +125,9 @@ docker-compose -f docker-compose.prod.yml up --build
 
 ---
 
-**Repository**: https://dev.azure.com/mdsajid020/shift_handover_v2
-**Last Updated**: October 15, 2025
-**Version**: 2.0 with SSO Integration
+**Repository**: https://git.garage.epam.com/shift-handover-automation/shifthandover
+**Last Updated**: October 25, 2024
+**Version**: 2.0 with SSO Integration and Modern UI
 
 ## Notes
 - For proof-of-concept, authentication uses static credentials.
