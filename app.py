@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, render_template
 
 from services.audit_service import log_action
 
@@ -8,6 +8,9 @@ from flask_mail import Mail
 from flask_migrate import Migrate
 from config import Config
 import os
+
+# Import secrets management system
+from models.secrets_manager import init_secrets_manager, secrets_manager
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -101,6 +104,14 @@ from routes.sso_config import sso_config_bp
 app.register_blueprint(sso_auth)
 app.register_blueprint(sso_config_bp)
 
+# Register user profile blueprint
+from routes.user_profile import user_profile_bp
+app.register_blueprint(user_profile_bp)
+
+# Register secrets management admin blueprint
+from routes.admin_secrets import admin_secrets_bp
+app.register_blueprint(admin_secrets_bp)
+
 # Add template global functions
 @app.template_global()
 def is_tab_enabled(tab_name):
@@ -121,6 +132,19 @@ def is_tab_enabled(tab_name):
             'tab_post_mortems': True
         }
         return enabled_tabs.get(tab_name, True)
+
+@app.template_filter('safe_engineer_name')
+def safe_engineer_name(engineer):
+    """Safely get engineer name from object or dict"""
+    try:
+        if hasattr(engineer, 'name'):
+            return engineer.name
+        elif isinstance(engineer, dict) and 'name' in engineer:
+            return engineer['name']
+        else:
+            return str(engineer)
+    except:
+        return 'Unknown Engineer'
 
 @app.template_global()
 def is_feature_enabled(feature_name):
@@ -235,6 +259,47 @@ def initialize_services():
         # Initialize database configurations
         with app.app_context():
             try:
+                # Initialize secrets management system
+                from models.models import db
+                master_key = os.environ.get('SECRETS_MASTER_KEY')
+                if master_key:
+                    init_secrets_manager(db.session, master_key)
+                    print("✅ Secrets management system initialized successfully")
+                    
+                    # Store in app context for admin routes access
+                    app.secrets_manager = secrets_manager
+                    
+                    # Update app config with secrets from database
+                    if secrets_manager:
+                        # Update mail configuration from secrets
+                        smtp_username = secrets_manager.get_secret('SMTP_USERNAME')
+                        if smtp_username and smtp_username != '[TO_BE_SET_VIA_UI]':
+                            app.config['MAIL_USERNAME'] = smtp_username
+                            print(f"✅ Updated MAIL_USERNAME from secrets")
+                        
+                        smtp_password = secrets_manager.get_secret('SMTP_PASSWORD')
+                        if smtp_password and smtp_password != '[TO_BE_SET_VIA_UI]':
+                            app.config['MAIL_PASSWORD'] = smtp_password
+                            print(f"✅ Updated MAIL_PASSWORD from secrets")
+                        
+                        # ServiceNow configuration from secrets
+                        servicenow_instance = secrets_manager.get_secret('SERVICENOW_INSTANCE')
+                        if servicenow_instance and servicenow_instance != '[TO_BE_SET_VIA_UI]':
+                            app.config['SERVICENOW_INSTANCE'] = servicenow_instance
+                            print(f"✅ Updated SERVICENOW_INSTANCE from secrets")
+                        
+                        servicenow_username = secrets_manager.get_secret('SERVICENOW_USERNAME')
+                        if servicenow_username and servicenow_username != '[TO_BE_SET_VIA_UI]':
+                            app.config['SERVICENOW_USERNAME'] = servicenow_username
+                            print(f"✅ Updated SERVICENOW_USERNAME from secrets")
+                        
+                        servicenow_password = secrets_manager.get_secret('SERVICENOW_PASSWORD')
+                        if servicenow_password and servicenow_password != '[TO_BE_SET_VIA_UI]':
+                            app.config['SERVICENOW_PASSWORD'] = servicenow_password
+                            print(f"✅ Updated SERVICENOW_PASSWORD from secrets")
+                else:
+                    print("⚠️ SECRETS_MASTER_KEY not set - secrets management not initialized")
+                
                 from models.app_config import AppConfig
                 from models.servicenow_config import ServiceNowConfig
                 
@@ -261,18 +326,12 @@ def initialize_services():
                 # Configure ServiceNow connection using new configuration system
                 try:
                     from services.servicenow_service import ServiceNowService
-                    from models.servicenow_config import ServiceNowConfig
                     service = ServiceNowService()
                     
-                    # Load configuration from database using new model
-                    if ServiceNowConfig.is_configured():
-                        config = ServiceNowConfig.get_connection_config()
-                        service.instance_url = config.get('instance_url')
-                        service.username = config.get('username') 
-                        service.password = config.get('password')
-                        service.timeout = config.get('timeout', 30)
-                        service.assignment_groups = config.get('assignment_groups', [])
-                        
+                    # Initialize the service with app context so it can use secrets manager fallback
+                    service.initialize(app)
+                    
+                    if service.instance_url and service.username and service.password:
                         print("✅ CTask assignment service started with ServiceNow connection")
                     else:
                         print("⚠️ CTask assignment service started but ServiceNow not configured")
@@ -298,6 +357,12 @@ except AttributeError:
     # For newer Flask versions, we'll call it during app startup
     with app.app_context():
         initialize_services()
+
+# Test route for SMTP configuration
+@app.route('/smtp-test')
+def smtp_test():
+    """Test page for SMTP configuration"""
+    return render_template('smtp_test.html')
 
 if __name__ == "__main__":
     app.run(debug=True)

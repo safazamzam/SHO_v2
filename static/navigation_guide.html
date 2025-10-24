@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navigation Guide - SMTP Redesign</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .guide-container {
+            max-width: 900px;
+            margin: 2rem auto;
+            padding: 2rem;
+        }
+        .step-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 1.5rem;
+            overflow: hidden;
+        }
+        .step-header {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 1rem 1.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .step-content {
+            padding: 1.5rem;
+        }
+        .tab-example {
+            display: inline-block;
+            background: #e74c3c;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            margin: 5px;
+            font-size: 0.9rem;
+        }
+        .tab-example.active {
+            background: #27ae60;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        .badge-new {
+            background: #27ae60;
+            color: white;
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            margin-left: 5px;
+        }
+        .url-box {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 1rem;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            margin: 1rem 0;
+        }
+        .highlight {
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="guide-container">
+        <div class="text-center mb-4">
+            <h1 class="display-4 text-primary"><i class="fas fa-compass me-3"></i>Navigation Guide</h1>
+            <p class="lead">How to access the NEW SMTP UI Design</p>
+        </div>
+
+        <div class="step-card">
+            <div class="step-header">
+                <i class="fas fa-play-circle me-2"></i>Step 1: Open the Secrets Dashboard
+            </div>
+            <div class="step-content">
+                <p>Navigate to the secrets management page:</p>
+                <div class="url-box">
+                    http://127.0.0.1:5000/admin/secrets/
+                </div>
+                <p>Make sure your Flask application is running first!</p>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-header">
+                <i class="fas fa-mouse-pointer me-2"></i>Step 2: Click the SMTP Tab (NEW DESIGN)
+            </div>
+            <div class="step-content">
+                <p>You'll see these tabs at the top of the page:</p>
+                <div class="my-3">
+                    <span class="tab-example">
+                        <i class="fab fa-servicestack me-2"></i>ServiceNow
+                    </span>
+                    <span class="tab-example active">
+                        <i class="fas fa-envelope me-2"></i>SMTP
+                        <span class="badge-new">NEW DESIGN</span>
+                    </span>
+                    <span class="tab-example">
+                        <i class="fas fa-cogs me-2"></i>Application
+                    </span>
+                    <span class="tab-example">
+                        <i class="fab fa-google me-2"></i>OAuth & SSO
+                    </span>
+                </div>
+                <div class="highlight">
+                    <strong><i class="fas fa-exclamation-triangle text-warning me-2"></i>Important:</strong>
+                    The SMTP tab should be active by default and shows a green "NEW DESIGN" badge.
+                    If you're seeing the old design, you might be on a different tab!
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-header">
+                <i class="fas fa-eye me-2"></i>Step 3: What You Should See
+            </div>
+            <div class="step-content">
+                <h5>NEW SMTP Design Features:</h5>
+                <ul class="list-unstyled">
+                    <li><i class="fas fa-check text-success me-2"></i>Modern card-based layout</li>
+                    <li><i class="fas fa-check text-success me-2"></i>Two-column responsive grid</li>
+                    <li><i class="fas fa-check text-success me-2"></i>Professional input styling</li>
+                    <li><i class="fas fa-check text-success me-2"></i>Enhanced typography and spacing</li>
+                    <li><i class="fas fa-check text-success me-2"></i>Contextual icons for each field</li>
+                    <li><i class="fas fa-check text-success me-2"></i>Better visual hierarchy</li>
+                </ul>
+                
+                <h5 class="mt-4">Still Seeing Old Design?</h5>
+                <div class="alert alert-info">
+                    <strong>Check these things:</strong>
+                    <ul class="mb-0 mt-2">
+                        <li>Make sure you're on the <strong>SMTP</strong> tab (not ServiceNow)</li>
+                        <li>The SMTP tab should have a green "NEW DESIGN" badge</li>
+                        <li>Try refreshing the page (Ctrl+F5)</li>
+                        <li>Clear browser cache if needed</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="step-card">
+            <div class="step-header">
+                <i class="fas fa-question-circle me-2"></i>Still Having Issues?
+            </div>
+            <div class="step-content">
+                <p>If you're still seeing the old design:</p>
+                <ol>
+                    <li>Take a screenshot of what you're seeing</li>
+                    <li>Check which tab is currently active (highlighted)</li>
+                    <li>Verify the URL in your browser</li>
+                    <li>Try opening the page in an incognito/private window</li>
+                </ol>
+                
+                <div class="alert alert-warning">
+                    <strong>Note:</strong> Only the <strong>SMTP</strong> tab has been redesigned. 
+                    The ServiceNow, Application, and OAuth tabs still have the old design.
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="/admin/secrets/" class="btn btn-primary btn-lg">
+                <i class="fas fa-arrow-right me-2"></i>Go to Secrets Dashboard
+            </a>
+        </div>
+    </div>
+</body>
+</html>

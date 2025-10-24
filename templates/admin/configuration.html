@@ -381,19 +381,57 @@
 </div>
 
 <script>
-// Add visual feedback when toggles are changed
+<script>
+<script>
+// Simplified feature toggle management - focusing on form submission first
 document.querySelectorAll('.config-toggle').forEach(toggle => {
     toggle.addEventListener('change', function() {
         const statusSpan = this.closest('.border').querySelector('.config-status');
+        
+        // Update visual feedback immediately
         if (this.checked) {
-            statusSpan.textContent = 'Enabled';
+            statusSpan.innerHTML = '<i class="fas fa-circle me-1"></i>Enabled';
             statusSpan.className = 'config-status status-enabled';
         } else {
-            statusSpan.textContent = 'Disabled';
+            statusSpan.innerHTML = '<i class="fas fa-circle me-1"></i>Disabled';
             statusSpan.className = 'config-status status-disabled';
         }
+        
+        // Show a notification that settings will be saved when form is submitted
+        showNotification('Toggle changed. Click "Save Configuration" to apply changes.', 'info');
     });
 });
+
+// Function to show notifications
+function showNotification(message, type = 'info') {
+    // Remove any existing notifications
+    const existingNotifications = document.querySelectorAll('.toggle-notification');
+    existingNotifications.forEach(n => n.remove());
+    
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show toggle-notification`;
+    notification.style.position = 'fixed';
+    notification.style.top = '20px';
+    notification.style.right = '20px';
+    notification.style.zIndex = '9999';
+    notification.style.minWidth = '300px';
+    
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
 
 // ServiceNow Configuration Management
 document.addEventListener('DOMContentLoaded', function() {

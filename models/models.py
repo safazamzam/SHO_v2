@@ -147,3 +147,50 @@ next_shift_engineers = db.Table('next_shift_engineers',
     db.Column('team_member_id', db.Integer, db.ForeignKey('team_member.id'))
 )
 
+# Secrets Management Models
+class SecretStore(db.Model):
+    """Encrypted secret storage in database"""
+    __tablename__ = 'secret_store'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    key_name = db.Column(db.String(255), unique=True, nullable=False, index=True)
+    encrypted_value = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(50), nullable=False, default='application')
+    description = db.Column(db.Text)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    requires_restart = db.Column(db.Boolean, default=False, nullable=False)
+    
+    # Audit fields
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp(), nullable=False)
+    updated_at = db.Column(db.DateTime, default=db.func.current_timestamp(), onupdate=db.func.current_timestamp())
+    created_by = db.Column(db.String(255))
+    updated_by = db.Column(db.String(255))
+    
+    # Security fields
+    last_accessed = db.Column(db.DateTime)
+    access_count = db.Column(db.Integer, default=0)
+    expires_at = db.Column(db.DateTime)  # For temporary secrets
+    
+    def __repr__(self):
+        return f'<SecretStore {self.key_name}:{self.category}>'
+
+class SecretAuditLog(db.Model):
+    """Audit log for secret access and modifications"""
+    __tablename__ = 'secret_audit_log'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    secret_key = db.Column(db.String(255), nullable=False, index=True)
+    action = db.Column(db.String(50), nullable=False)  # CREATE, READ, UPDATE, DELETE
+    user_id = db.Column(db.String(255))
+    user_email = db.Column(db.String(255))
+    ip_address = db.Column(db.String(45))
+    user_agent = db.Column(db.Text)
+    timestamp = db.Column(db.DateTime, default=db.func.current_timestamp(), nullable=False)
+    old_value_hash = db.Column(db.String(64))  # Hash of old value for comparison
+    new_value_hash = db.Column(db.String(64))  # Hash of new value
+    success = db.Column(db.Boolean, default=True)
+    error_message = db.Column(db.Text)
+    
+    def __repr__(self):
+        return f'<SecretAudit {self.secret_key}:{self.action} by {self.user_email}>'
+

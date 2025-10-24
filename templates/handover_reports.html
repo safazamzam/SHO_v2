@@ -1,4 +1,92 @@
 {% extends "base.html" %}
+
+{% block title %}Handover Reports{% endblock %}
+
+{% block extra_css %}
+<style>
+    .reports-table th {
+        font-weight: 600;
+        color: #495057;
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+    }
+    
+    .reports-table td {
+        vertical-align: middle;
+        border-color: #f1f3f4;
+    }
+    
+    .incident-col, .keypoints-col {
+        min-width: 300px;
+        max-width: 400px;
+    }
+    
+    .incident-accordion .accordion-item {
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .incident-accordion .accordion-button {
+        border-radius: 8px;
+        font-size: 0.9rem;
+        background-color: #f8f9fa;
+    }
+    
+    .incident-accordion .accordion-button:not(.collapsed) {
+        background-color: #e3f2fd;
+        color: #1976d2;
+    }
+    
+    .table-responsive {
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .sticky-top {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .card {
+        border-radius: 12px;
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
+    }
+    
+    .btn {
+        border-radius: 8px;
+        font-weight: 500;
+    }
+    
+    .badge {
+        border-radius: 6px;
+        font-weight: 500;
+    }
+    
+    .form-control, .form-select {
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #4285f4;
+        box-shadow: 0 0 0 0.2rem rgba(66, 133, 244, 0.25);
+    }
+    
+    @media (max-width: 768px) {
+        .incident-col, .keypoints-col {
+            min-width: 250px;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid px-0">
     <!-- Header Section -->
@@ -313,7 +401,7 @@
     {% endif %}
 </div>
 
-<!-- JavaScript for Dynamic Team Loading -->
+<!-- Enhanced JavaScript for Modern Interactions -->
 <script>
 function updateTeamsDropdown(accountId) {
     const teamSelect = document.getElementById('team_id');
@@ -323,9 +411,10 @@ function updateTeamsDropdown(accountId) {
         return;
     }
     
-    // Show loading state
-    teamSelect.innerHTML = '<option value="">Loading teams...</option>';
+    // Show modern loading state
+    teamSelect.innerHTML = '<option value="">🔄 Loading teams...</option>';
     teamSelect.disabled = true;
+    teamSelect.style.opacity = '0.6';
     
     fetch('/get_teams?account_id=' + accountId)
         .then(response => response.json())
@@ -337,111 +426,137 @@ function updateTeamsDropdown(accountId) {
         })
         .catch(error => {
             console.error('Error loading teams:', error);
-            teamSelect.innerHTML = '<option value="">Error loading teams</option>';
+            teamSelect.innerHTML = '<option value="">⚠️ Error loading teams</option>';
         })
         .finally(() => {
             teamSelect.disabled = false;
+            teamSelect.style.opacity = '1';
         });
 }
 
-// Add hover effects and animations
+// Enhanced modern interactions
 document.addEventListener('DOMContentLoaded', function() {
-    // Add hover effects for accordion buttons
-    const accordionButtons = document.querySelectorAll('.accordion-button');
-    accordionButtons.forEach(button => {
-        button.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-1px)';
-            this.style.transition = 'transform 0.2s ease';
+    // Add staggered fade-in animations
+    const elements = document.querySelectorAll('.fade-in-up');
+    elements.forEach((el, index) => {
+        el.style.animationDelay = `${index * 0.1}s`;
+    });
+
+    // Enhanced hover effects for interactive rows
+    const tableRows = document.querySelectorAll('.interactive-row');
+    tableRows.forEach(row => {
+        row.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px) scale(1.005)';
+            this.style.zIndex = '5';
         });
-        button.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
+        
+        row.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+            this.style.zIndex = '1';
         });
     });
 
-    // Add hover effects for key point cards
-    const keyPointCards = document.querySelectorAll('.keypoints-col .card');
-    keyPointCards.forEach(card => {
-        card.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-2px)';
-            this.style.transition = 'transform 0.2s ease';
+    // Smooth accordion transitions
+    const accordionButtons = document.querySelectorAll('.modern-accordion-button');
+    accordionButtons.forEach(button => {
+        button.addEventListener('click', function(event) {
+            // Add ripple effect
+            const ripple = document.createElement('span');
+            ripple.style.cssText = `
+                position: absolute;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.3);
+                transform: scale(0);
+                animation: ripple 0.6s linear;
+                width: 20px;
+                height: 20px;
+                left: ${event.offsetX - 10}px;
+                top: ${event.offsetY - 10}px;
+                pointer-events: none;
+            `;
+            
+            this.style.position = 'relative';
+            this.appendChild(ripple);
+            
+            setTimeout(() => {
+                ripple.remove();
+            }, 600);
         });
+    });
+
+    // Modern form enhancements
+    const modernInputs = document.querySelectorAll('.modern-input, .modern-select');
+    modernInputs.forEach(input => {
+        // Add focus animations
+        input.addEventListener('focus', function() {
+            this.style.transform = 'scale(1.02)';
+            this.style.background = 'rgba(255, 255, 255, 0.15)';
+        });
+        
+        input.addEventListener('blur', function() {
+            this.style.transform = 'scale(1)';
+            this.style.background = 'rgba(255, 255, 255, 0.1)';
+        });
+    });
+
+    // Enhanced button interactions
+    const modernButtons = document.querySelectorAll('.btn-modern');
+    modernButtons.forEach(btn => {
+        btn.addEventListener('mousedown', function() {
+            this.style.transform = 'translateY(-2px) scale(0.98)';
+        });
+        
+        btn.addEventListener('mouseup', function() {
+            this.style.transform = 'translateY(-2px) scale(1)';
+        });
+        
+        btn.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0) scale(1)';
+        });
+    });
+
+    // Keypoint card animations
+    const keypointCards = document.querySelectorAll('.keypoint-card');
+    keypointCards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-3px) scale(1.02)';
+        });
+        
         card.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
+            this.style.transform = 'translateY(0) scale(1)';
+        });
+    });
+
+    // Add loading states for export buttons
+    const exportForms = document.querySelectorAll('form[action*="export"]');
+    exportForms.forEach(form => {
+        form.addEventListener('submit', function() {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                const originalHTML = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<span class="loading-spinner me-2"></span>Exporting...';
+                submitBtn.disabled = true;
+                
+                setTimeout(() => {
+                    submitBtn.innerHTML = originalHTML;
+                    submitBtn.disabled = false;
+                }, 3000);
+            }
         });
     });
 });
+
+// Add CSS animations dynamically
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes ripple {
+        to {
+            transform: scale(4);
+            opacity: 0;
+        }
+    }
+`;
+document.head.appendChild(style);
 </script>
-
-<!-- Custom Styles -->
-<style>
-.incident-accordion .accordion-button {
-    font-size: 0.875rem;
-    border-radius: 0.375rem !important;
-}
-
-.incident-accordion .accordion-body {
-    font-size: 0.8rem;
-    border-radius: 0 0 0.375rem 0.375rem;
-}
-
-.reports-table td {
-    vertical-align: top;
-    padding: 0.75rem 0.5rem;
-}
-
-.incident-col {
-    min-width: 350px;
-    max-width: 450px;
-}
-
-.keypoints-col {
-    min-width: 300px;
-    max-width: 400px;
-}
-
-.table-responsive {
-    max-height: 800px;
-    overflow-y: auto;
-}
-
-.sticky-top {
-    position: sticky !important;
-    top: 0;
-    z-index: 10;
-}
-
-.card {
-    transition: box-shadow 0.2s ease;
-}
-
-.card:hover {
-    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important;
-}
-
-.badge {
-    font-size: 0.875rem;
-}
-
-.text-primary {
-    color: #0d6efd !important;
-}
-
-.text-secondary {
-    color: #6c757d !important;
-}
-
-.accordion-item {
-    border-radius: 0.375rem !important;
-}
-
-.accordion-button:not(.collapsed) {
-    background-color: #e7f1ff;
-    border-color: #b3d4fc;
-}
-
-.fw-semibold {
-    font-weight: 600 !important;
-}
-</style>
 
 {% endblock %}

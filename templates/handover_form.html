@@ -93,10 +93,10 @@
                         <div class="mb-4">
                             <h5 class="mb-4"><i class="fas fa-exclamation-triangle me-2"></i>Incidents Management</h5>
                             
-                            <!-- Open Incidents -->
+                            <!-- Open / Active Incidents -->
                             <div class="card mb-3">
                                 <div class="card-header bg-warning bg-opacity-10 border-warning">
-                                    <h6 class="mb-0"><i class="fas fa-folder-open me-2"></i>Open Incidents</h6>
+                                    <h6 class="mb-0"><i class="fas fa-folder-open me-2"></i>Open / Active Incidents</h6>
                                 </div>
                                 <div class="card-body">
                                     <div id="open-incidents-container">
@@ -1049,7 +1049,7 @@ function fetchServiceNowIncidents() {
 }
 
 function populateServiceNowIncidents(incidents, summary) {
-    // Populate Open Incidents
+    // Populate Open / Active Incidents
     populateIncidentSection('open', incidents.open_incidents);
     
     // Populate Closed Incidents  

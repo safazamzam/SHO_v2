@@ -17,19 +17,34 @@ def admin_configuration():
     if request.method == 'POST':
         # Handle configuration updates
         config_updates = []
-        for key in request.form:
-            if key.startswith('tab_') or key.startswith('feature_'):
-                value = 'true' if request.form.get(key) == 'on' else 'false'
-                AppConfig.set_config(key, value)
-                config_updates.append(f"{key}: {value}")
-                log_action('Update Configuration', f'Updated {key} to {value}')
+        
+        # Define all possible configuration keys that should be processed
+        all_config_keys = [
+            'tab_kb_articles',
+            'tab_vendor_details', 
+            'tab_applications',
+            'tab_change_management',
+            'tab_problem_tickets',
+            'tab_post_mortems',
+            'feature_servicenow_integration',
+            'feature_ctask_assignment'
+        ]
+        
+        # Process each configuration key - this ensures unchecked boxes are set to 'false'
+        for key in all_config_keys:
+            # Check if the checkbox was checked (present in form) or unchecked (not present)
+            value = 'true' if request.form.get(key) == 'on' else 'false'
+            AppConfig.set_config(key, value)
+            config_updates.append(f"{key}: {value}")
+            log_action('Update Configuration', f'Updated {key} to {value}')
         
         if config_updates:
-            flash(f'Configuration updated successfully: {", ".join(config_updates)}', 'success')
+            flash(f'Configuration updated successfully. {len(config_updates)} settings processed.', 'success')
         else:
             flash('No configuration changes made.', 'info')
         
-        return redirect(url_for('dashboard.dashboard'))
+        # Stay on configuration page instead of redirecting to dashboard
+        return redirect(url_for('config.admin_configuration'))
     
     # Get all configurations
     all_configs = AppConfig.query.filter(

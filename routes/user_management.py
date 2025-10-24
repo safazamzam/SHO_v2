@@ -361,4 +361,10 @@ def user_management():
                     accounts = [acc] if acc else []
                     t = Team.query.get(current_user.team_id)
                     teams = [t] if t else []
-    return render_template('user_management.html', users=users, accounts=accounts, teams=teams)
+    
+    return render_template('user_management.html', 
+                         users=users, 
+                         accounts=accounts, 
+                         teams=teams,
+                         current_engineers=[],
+                         next_shift_engineers=[])

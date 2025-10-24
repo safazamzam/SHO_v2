@@ -73,12 +73,15 @@ def change_management():
         
         # Check if ServiceNow is enabled and configured
         if not servicenow_service.is_enabled_and_configured():
-            return render_template('change_management.html',
-                                 page_title='Change Management',
+            return render_template('change_management_ultra_modern_clean.html',
+                                 title='Change Management',
                                  current_user=current_user,
                                  tab='change_management',
                                  servicenow_available=False,
-                                 error_message='ServiceNow integration is not enabled or configured. Please contact your administrator.')
+                                 error='ServiceNow integration is not enabled or configured. Please contact your administrator.',
+                                 change_requests=[],
+                                 change_tasks=[],
+                                 current_time=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
         
         # Get assignment groups
         assignment_groups = servicenow_service.get_configured_assignment_groups()
@@ -128,7 +131,7 @@ def change_management():
         import traceback
         traceback.print_exc()
         log_action('Error in change_management', f'Error: {error_msg}')
-        return render_template('change_management_ultra_modern.html',
+        return render_template('change_management_ultra_modern_clean.html',
                              title='Change Management',
                              error=error_msg,
                              change_requests=[],

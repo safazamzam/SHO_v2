@@ -1,0 +1,295 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notification-card {
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        transition: all 0.3s ease;
+        margin-bottom: 15px;
+    }
+    
+    .notification-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    .notification-unread {
+        border-left: 4px solid #4285f4;
+        background-color: #f8f9fa;
+    }
+    
+    .notification-read {
+        border-left: 4px solid #e9ecef;
+    }
+    
+    .notification-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+    }
+    
+    .notification-success {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .notification-info {
+        background-color: #cce7ff;
+        color: #0c5aa6;
+    }
+    
+    .notification-warning {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .notification-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .mark-read-btn {
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    
+    .notification-card:hover .mark-read-btn {
+        opacity: 1;
+    }
+    
+    .filter-chips {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    
+    .filter-chip {
+        padding: 8px 16px;
+        border-radius: 20px;
+        border: 1px solid #e0e0e0;
+        background-color: #fff;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-decoration: none;
+        color: #666;
+    }
+    
+    .filter-chip:hover, .filter-chip.active {
+        background-color: #4285f4;
+        color: white;
+        border-color: #4285f4;
+        text-decoration: none;
+    }
+    
+    .notification-stats {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0 text-primary">
+                    <i class="bi bi-bell me-2"></i>Notifications
+                </h1>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-primary" onclick="markAllAsRead()">
+                        <i class="bi bi-check-all me-1"></i>Mark All as Read
+                    </button>
+                    <button class="btn btn-primary" onclick="refreshNotifications()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Stats -->
+    <div class="row">
+        <div class="col-12">
+            <div class="notification-stats">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <h3 class="mb-1">{{ notifications|length }}</h3>
+                        <small>Total Notifications</small>
+                    </div>
+                    <div class="col-md-3">
+                        <h3 class="mb-1">{{ notifications|selectattr('read', 'equalto', false)|list|length }}</h3>
+                        <small>Unread</small>
+                    </div>
+                    <div class="col-md-3">
+                        <h3 class="mb-1">{{ notifications|selectattr('type', 'equalto', 'success')|list|length }}</h3>
+                        <small>Success</small>
+                    </div>
+                    <div class="col-md-3">
+                        <h3 class="mb-1">{{ notifications|selectattr('type', 'equalto', 'warning')|list|length }}</h3>
+                        <small>Warnings</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Chips -->
+    <div class="row">
+        <div class="col-12">
+            <div class="filter-chips">
+                <a href="#" class="filter-chip active" data-filter="all">
+                    <i class="bi bi-list me-1"></i>All
+                </a>
+                <a href="#" class="filter-chip" data-filter="unread">
+                    <i class="bi bi-circle me-1"></i>Unread
+                </a>
+                <a href="#" class="filter-chip" data-filter="success">
+                    <i class="bi bi-check-circle me-1"></i>Success
+                </a>
+                <a href="#" class="filter-chip" data-filter="info">
+                    <i class="bi bi-info-circle me-1"></i>Info
+                </a>
+                <a href="#" class="filter-chip" data-filter="warning">
+                    <i class="bi bi-exclamation-triangle me-1"></i>Warning
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notifications List -->
+    <div class="row">
+        <div class="col-12">
+            {% if notifications %}
+                {% for notification in notifications %}
+                <div class="notification-card {{ 'notification-unread' if not notification.read else 'notification-read' }}" 
+                     data-type="{{ notification.type }}" 
+                     data-read="{{ notification.read|lower }}">
+                    <div class="card-body">
+                        <div class="d-flex align-items-start">
+                            <div class="notification-icon notification-{{ notification.type }} me-3">
+                                {% if notification.type == 'success' %}
+                                    <i class="bi bi-check-circle"></i>
+                                {% elif notification.type == 'info' %}
+                                    <i class="bi bi-info-circle"></i>
+                                {% elif notification.type == 'warning' %}
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                {% else %}
+                                    <i class="bi bi-bell"></i>
+                                {% endif %}
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">{{ notification.title }}</h6>
+                                        <p class="mb-1 text-muted">{{ notification.message }}</p>
+                                        <small class="text-muted">
+                                            <i class="bi bi-clock me-1"></i>
+                                            {{ notification.timestamp.strftime('%Y-%m-%d %H:%M') }}
+                                        </small>
+                                    </div>
+                                    {% if not notification.read %}
+                                    <button class="btn btn-sm btn-outline-primary mark-read-btn" 
+                                            onclick="markAsRead({{ notification.id }})">
+                                        <i class="bi bi-check"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-bell-slash" style="font-size: 4rem; color: #ccc;"></i>
+                    <h4 class="mt-3 text-muted">No Notifications</h4>
+                    <p class="text-muted">You're all caught up! No new notifications to display.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    function markAsRead(notificationId) {
+        fetch(`/notifications/mark-read/${notificationId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+
+    function markAllAsRead() {
+        fetch('/notifications/mark-all-read', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                location.reload();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+
+    function refreshNotifications() {
+        location.reload();
+    }
+
+    // Filter functionality
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Update active state
+            document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+            this.classList.add('active');
+            
+            const filter = this.dataset.filter;
+            const notifications = document.querySelectorAll('.notification-card');
+            
+            notifications.forEach(notification => {
+                let show = false;
+                
+                if (filter === 'all') {
+                    show = true;
+                } else if (filter === 'unread') {
+                    show = notification.dataset.read === 'false';
+                } else {
+                    show = notification.dataset.type === filter;
+                }
+                
+                notification.style.display = show ? 'block' : 'none';
+            });
+        });
+    });
+</script>
+{% endblock %}

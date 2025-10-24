@@ -259,6 +259,11 @@
     color: #7b1fa2;
 }
 
+.role-badge.engineer {
+    background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
+    color: #388e3c;
+}
+
 /* Action Buttons */
 .action-buttons {
     display: flex;
@@ -512,6 +517,10 @@
 
 .group-icon.user {
     background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%);
+}
+
+.group-icon.engineer {
+    background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
 }
 
 .group-count {
@@ -1007,33 +1016,27 @@
                     </div>
 
                     <!-- Users Grouped by Role -->
-                    {% set user_groups = {
-                        'super_admin': [],
-                        'account_admin': [],
-                        'team_admin': [],
-                        'user': []
-                    } %}
-                    
-                    {% for user in users %}
-                        {% if user_groups[user.role].append(user) %}{% endif %}
-                    {% endfor %}
+                    <!-- Group users by role using Jinja2 groupby filter -->
+                    {% set user_groups = users | groupby('role') %}
                     
                     {% set group_config = {
                         'super_admin': {'title': 'Super Administrators', 'icon': 'bi-shield-fill-exclamation', 'color': 'super-admin'},
                         'account_admin': {'title': 'Account Administrators', 'icon': 'bi-building-fill', 'color': 'account-admin'},
                         'team_admin': {'title': 'Team Administrators', 'icon': 'bi-people-fill', 'color': 'team-admin'},
-                        'user': {'title': 'Users', 'icon': 'bi-person-fill', 'color': 'user'}
+                        'user': {'title': 'Users', 'icon': 'bi-person-fill', 'color': 'user'},
+                        'engineer': {'title': 'Engineers', 'icon': 'bi-gear-fill', 'color': 'engineer'}
                     } %}
                     
-                    {% for role, role_users in user_groups.items() %}
+                    {% for role, role_users in user_groups %}
                         {% if role_users %}
+                        {% set role_config = group_config.get(role, {'title': role.title(), 'icon': 'bi-person-circle', 'color': 'user'}) %}
                         <div class="user-group fade-in">
                             <div class="group-header" data-bs-toggle="collapse" data-bs-target="#group-{{ role }}" aria-expanded="false">
                                 <div class="group-title">
-                                    <div class="group-icon {{ group_config[role]['color'] }}">
-                                        <i class="{{ group_config[role]['icon'] }}"></i>
+                                    <div class="group-icon {{ role_config['color'] }}">
+                                        <i class="{{ role_config['icon'] }}"></i>
                                     </div>
-                                    {{ group_config[role]['title'] }}
+                                    {{ role_config['title'] }}
                                     <span class="group-count ms-2">{{ role_users|length }}</span>
                                 </div>
                                 <i class="bi bi-chevron-down group-toggle collapsed"></i>
