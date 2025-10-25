@@ -1,6 +1,28 @@
-# Shift Handover Application v2 - GitLab Repository
+# 🚀 Shift Handover Application v2 - Complete HTTPS Ready
 
-This is an enhanced Flask-based Shift Handover Application with comprehensive SSO (Single Sign-On) integration, automated ServiceNow CTask assignment, and modern dashboard features.
+A comprehensive Flask-based shift handover management system with email notifications, HTTPS deployment, SSO integration, and modern admin interface.
+
+## 🆕 Latest Updates (October 2025)
+
+### ✨ Major Features Added
+
+#### 📧 Email Recipients Management
+- **Admin Dashboard Integration**: New "Email Recipients" tab in Secrets Management
+- **Configurable Recipients**: Separate lists for handover notifications and priority alerts
+- **Email Testing**: Built-in test functionality to verify email delivery
+- **Toggle Notifications**: Enable/disable email notifications globally
+
+#### 🔒 Production HTTPS Deployment
+- **Complete SSL Setup**: Automated Let's Encrypt certificate generation
+- **Nginx Reverse Proxy**: Production-grade proxy with security headers
+- **Docker Compose**: Ready-to-deploy HTTPS configuration
+- **Certificate Auto-Renewal**: Automated SSL certificate renewal setup
+
+#### 🛡️ Enhanced Security
+- **Security Headers**: HSTS, CSP, XSS protection
+- **Rate Limiting**: Protection against brute force attacks
+- **HTTPS Enforcement**: Automatic HTTP to HTTPS redirect
+- **Secure Session Management**: Production-ready session configuration
 
 ## ✨ Key Features
 
@@ -17,7 +39,40 @@ This is an enhanced Flask-based Shift Handover Application with comprehensive SS
 - **Team Management**: Roster management with role-based permissions
 - **Dashboard Analytics**: Real-time metrics and shift status monitoring
 - **Audit Logging**: Comprehensive activity tracking and reporting
-- **Email Notifications**: Automated notifications on handover submission
+- **Email Notifications**: Automated notifications with configurable recipients
+
+### 🎯 Quick Start for HTTPS Deployment
+
+1. **Configure Domain**: Point your domain to server IP with NAT
+2. **Environment Setup**: Copy `.env.https.template` to `.env.production`
+3. **Deploy**: Run `deploy-https.ps1` or follow `QUICK_HTTPS_SETUP.md`
+
+```powershell
+# Quick deployment command
+Copy-Item .env.https.template .env.production
+# Edit .env.production with your domain and credentials
+docker-compose -f docker-compose.https.yml up -d
+```
+
+### 🚀 Deployment Options
+
+#### Development
+```bash
+docker-compose up -d
+# Access: http://localhost:5000
+```
+
+#### Production HTTPS
+```bash
+docker-compose -f docker-compose.https.yml up -d
+# Access: https://yourdomain.com
+```
+
+### 📚 Documentation
+
+- **[Quick HTTPS Setup](QUICK_HTTPS_SETUP.md)**: Fast deployment guide
+- **[Complete Deployment Guide](HTTPS_DEPLOYMENT_GUIDE.md)**: Detailed instructions
+- **[Security Configuration](SECURE_CONFIGURATION_GUIDE.md)**: Security best practices
 - **Export Features**: Export incidents/key points to PDF/CSV
 
 ### 🛠 Technical Stack
