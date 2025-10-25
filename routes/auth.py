@@ -1,8 +1,10 @@
 
-from flask import Blueprint, render_template, redirect, url_for, request, flash, session
+from flask import Blueprint, render_template, redirect, url_for, request, flash, session, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
-from models.models import User, Account, Team
-from werkzeug.security import check_password_hash
+from models.models import User, Account, Team, db
+from models.password_reset import PasswordResetToken
+from services.password_reset_service import PasswordResetService
+from werkzeug.security import check_password_hash, generate_password_hash
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -109,4 +111,106 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for('auth.login'))
+
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    """Forgot password page - initiate password reset"""
+    if request.method == 'POST':
+        email = request.form.get('email', '').strip().lower()
+        
+        if not email:
+            flash('Email address is required.', 'error')
+            return render_template('auth/forgot_password.html')
+        
+        # Get client information for security logging
+        ip_address = request.environ.get('HTTP_X_FORWARDED_FOR', request.environ.get('REMOTE_ADDR'))
+        user_agent = request.environ.get('HTTP_USER_AGENT', '')
+        
+        # Initiate password reset
+        result = PasswordResetService.initiate_password_reset(
+            email=email,
+            ip_address=ip_address,
+            user_agent=user_agent
+        )
+        
+        if result['success']:
+            flash(result['message'], 'success')
+            return redirect(url_for('auth.login'))
+        else:
+            flash(result['message'], 'error')
+    
+    return render_template('auth/forgot_password.html')
+
+@auth_bp.route('/reset-password', methods=['GET', 'POST'])
+def reset_password():
+    """Reset password page - complete password reset with token"""
+    token = request.args.get('token') or request.form.get('token')
+    
+    if not token:
+        flash('Invalid or missing reset token.', 'error')
+        return redirect(url_for('auth.forgot_password'))
+    
+    if request.method == 'GET':
+        # Validate token for GET request
+        result = PasswordResetService.validate_reset_token(token)
+        if not result['success']:
+            flash(result['message'], 'error')
+            return redirect(url_for('auth.forgot_password'))
+        
+        # Show reset form with valid token
+        return render_template('auth/reset_password.html', token=token, user=result['user'])
+    
+    elif request.method == 'POST':
+        # Process password reset
+        new_password = request.form.get('new_password', '').strip()
+        confirm_password = request.form.get('confirm_password', '').strip()
+        
+        if not new_password or not confirm_password:
+            flash('Both password fields are required.', 'error')
+            return render_template('auth/reset_password.html', token=token)
+        
+        # Reset password
+        result = PasswordResetService.reset_password(
+            token_string=token,
+            new_password=new_password,
+            confirm_password=confirm_password
+        )
+        
+        if result['success']:
+            flash(result['message'], 'success')
+            return redirect(url_for('auth.login'))
+        else:
+            flash(result['message'], 'error')
+            # Re-validate token to get user info for template
+            token_result = PasswordResetService.validate_reset_token(token)
+            user = token_result.get('user') if token_result['success'] else None
+            return render_template('auth/reset_password.html', token=token, user=user)
+
+@auth_bp.route('/api/check-reset-token', methods=['POST'])
+def check_reset_token():
+    """API endpoint to validate reset token"""
+    data = request.get_json()
+    token = data.get('token') if data else None
+    
+    if not token:
+        return jsonify({'success': False, 'message': 'Token is required'})
+    
+    result = PasswordResetService.validate_reset_token(token)
+    
+    if result['success']:
+        return jsonify({
+            'success': True,
+            'message': 'Valid token',
+            'user': {
+                'username': result['user'].username,
+                'email': result['user'].email,
+                'first_name': result['user'].first_name,
+                'last_name': result['user'].last_name
+            }
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'message': result['message']
+        })
 

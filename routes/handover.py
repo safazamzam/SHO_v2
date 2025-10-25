@@ -644,6 +644,16 @@ def handover():
     else:
         teams = Team.query.filter_by(account_id=current_user.account_id, id=current_user.team_id, status='active').all()
     
+    # Set default team selection based on user role
+    default_team_id = None
+    if current_user.role in ['user', 'team_admin'] and current_user.team_id:
+        default_team_id = current_user.team_id
+    elif current_user.role == 'account_admin' and not team_id and teams:
+        # For account admin, don't auto-select, let them choose
+        default_team_id = None
+    elif team_id:
+        default_team_id = team_id
+    
     # Use same team member filtering logic as team details route
     tm_query = TeamMember.query
     if current_user.role == 'super_admin':
@@ -1073,6 +1083,7 @@ def handover():
     return render_template('handover_form.html',
         team_members=team_members,
         teams=teams,
+        default_team_id=default_team_id,
         current_engineers=current_engineers,
         next_engineers=next_engineers,
         current_shift_type=current_shift_type,

@@ -36,12 +36,49 @@
                             </div>
                             <div class="col-md-6">
                                 <label for="team_id" class="form-label">Team</label>
-                                <select class="form-select" id="team_id" name="team_id" required>
-                                    <option value="">Select Team</option>
-                                    {% for team in teams %}
-                                    <option value="{{ team.id }}">{{ team.name }}</option>
-                                    {% endfor %}
-                                </select>
+                                {% if current_user.role in ['user', 'team_admin'] %}
+                                    <!-- For regular users and team admins, auto-select their team and make readonly -->
+                                    <select class="form-select" id="team_id" name="team_id" required readonly style="background-color: #f8f9fa;">
+                                        {% for team in teams %}
+                                            <option value="{{ team.id }}" selected>{{ team.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Your team is automatically selected based on your account assignment.
+                                    </small>
+                                {% elif current_user.role == 'account_admin' %}
+                                    <!-- For account admins, show teams from their account -->
+                                    <select class="form-select" id="team_id" name="team_id" required>
+                                        <option value="">Select Team from {{ current_user.account.name if current_user.account else 'Your Account' }}</option>
+                                        {% for team in teams %}
+                                            <option value="{{ team.id }}" {% if default_team_id == team.id %}selected{% endif %}>{{ team.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-users me-1"></i>
+                                        Select the team for this handover from your account.
+                                    </small>
+                                {% else %}
+                                    <!-- For super admins, show all teams grouped by account -->
+                                    <select class="form-select" id="team_id" name="team_id" required>
+                                        <option value="">Select Team</option>
+                                        {% set current_account = None %}
+                                        {% for team in teams %}
+                                            {% if team.account_id != current_account %}
+                                                {% set current_account = team.account_id %}
+                                                {% if not loop.first %}</optgroup>{% endif %}
+                                                <optgroup label="{{ team.account.name }}">
+                                            {% endif %}
+                                            <option value="{{ team.id }}" {% if default_team_id == team.id %}selected{% endif %}>{{ team.name }}</option>
+                                            {% if loop.last %}</optgroup>{% endif %}
+                                        {% endfor %}
+                                    </select>
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-globe me-1"></i>
+                                        Teams are grouped by account. Select the appropriate team for this handover.
+                                    </small>
+                                {% endif %}
                             </div>
                         </div>
 
@@ -520,7 +557,16 @@ function updateIncidentEngineersDropdowns(date, shiftType) {
     
     const properShiftType = shiftMap[shiftType] || shiftType;
     
-    fetch(`/api/get_engineers?date=${date}&shift_type=${properShiftType}`)
+    // Get selected team ID for filtering
+    const teamId = document.getElementById('team_id').value;
+    
+    // Build API URL with team parameter if available
+    let apiUrl = `/api/get_engineers?date=${date}&shift_type=${properShiftType}`;
+    if (teamId) {
+        apiUrl += `&team_id=${teamId}`;
+    }
+    
+    fetch(apiUrl)
         .then(response => response.json())
         .then(data => {
             // Update all engineer dropdowns for incidents
@@ -630,12 +676,21 @@ function fetchEngineers(date, shiftType, targetId) {
     
     const properShiftType = shiftMap[shiftType] || shiftType;
     
+    // Get selected team ID for filtering
+    const teamId = document.getElementById('team_id').value;
+    
+    // Build API URL with team parameter if available
+    let apiUrl = `/api/get_engineers?date=${date}&shift_type=${properShiftType}`;
+    if (teamId) {
+        apiUrl += `&team_id=${teamId}`;
+    }
+    
     // Determine if this is for current or next engineers
     const isCurrentShift = targetId === 'current_engineers';
     const displayListId = isCurrentShift ? 'current_engineers_list' : 'next_engineers_list';
     const hiddenInputId = targetId; // Keep the same ID for hidden input
     
-    fetch(`/api/get_engineers?date=${date}&shift_type=${properShiftType}`)
+    fetch(apiUrl)
         .then(response => response.json())
         .then(data => {
             const displayList = document.getElementById(displayListId);
@@ -674,6 +729,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const dateInput = document.getElementById('handover_date');
     const currentShiftSelect = document.getElementById('current_shift_type');
     const nextShiftSelect = document.getElementById('next_shift_type');
+    const teamSelect = document.getElementById('team_id');
     
     // Set default date to today if not set
     if (!dateInput.value) {
@@ -691,8 +747,9 @@ document.addEventListener('DOMContentLoaded', function() {
     dateInput.addEventListener('change', updateEngineers);
     currentShiftSelect.addEventListener('change', updateEngineers);
     nextShiftSelect.addEventListener('change', updateEngineers);
+    teamSelect.addEventListener('change', updateEngineers);
     
-    // Initial load to populate engineers
+    // Initial load to populate engineers (especially important for auto-selected teams)
     updateEngineers();
 });
 

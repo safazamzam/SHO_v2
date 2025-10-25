@@ -4,42 +4,119 @@
 
 {% block extra_css %}
 <style>
+    .reports-table {
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 1px solid #f0f8ff;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    }
+    
     .reports-table th {
         font-weight: 600;
         color: #495057;
-        background-color: #f8f9fa;
-        border-bottom: 2px solid #dee2e6;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-bottom: 1px solid #f0f8ff;
+        border-right: 1px solid #f0f8ff;
+        padding: 16px 12px;
+        font-size: 0.95rem;
+    }
+    
+    .reports-table th:last-child {
+        border-right: none;
     }
     
     .reports-table td {
         vertical-align: middle;
-        border-color: #f1f3f4;
+        border-bottom: 1px solid #f0f8ff;
+        border-right: 1px solid #f0f8ff;
+        padding: 16px 12px;
+        background-color: #ffffff;
+        transition: background-color 0.2s ease;
+    }
+    
+    .reports-table td:last-child {
+        border-right: none;
+    }
+    
+    .reports-table tbody tr:hover td {
+        background-color: #f8f9ff;
+    }
+    
+    .reports-table tbody tr:last-child td {
+        border-bottom: none;
     }
     
     .incident-col, .keypoints-col {
-        min-width: 300px;
-        max-width: 400px;
+        min-width: 320px;
+        max-width: 450px;
+        background-color: #fdfdff !important;
     }
     
     .incident-accordion .accordion-item {
         border-radius: 8px;
         overflow: hidden;
+        border: 1px solid #f0f8ff;
+        margin-bottom: 8px;
     }
     
     .incident-accordion .accordion-button {
         border-radius: 8px;
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         background-color: #f8f9fa;
+        border: none;
+        padding: 10px 12px;
     }
     
     .incident-accordion .accordion-button:not(.collapsed) {
-        background-color: #e3f2fd;
+        background-color: #f0f8ff;
         color: #1976d2;
+        box-shadow: none;
+    }
+    
+    .incident-accordion .accordion-body {
+        padding: 12px;
+        background-color: #fafbff;
+        border-top: 1px solid #f0f8ff;
+    }
+    
+    .keypoint-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+        border: 1px solid #f0f8ff;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        transition: all 0.2s ease;
+    }
+    
+    .keypoint-card:hover {
+        border-color: #e3f2fd;
+        box-shadow: 0 2px 8px rgba(33, 150, 243, 0.08);
+    }
+    
+    .keypoint-card .card-body {
+        padding: 12px;
+    }
+    
+    .empty-state {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: 1px dashed #f0f8ff;
+        border-radius: 8px;
+        padding: 24px;
+        text-align: center;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 1.5rem;
+        opacity: 0.6;
+        margin-bottom: 8px;
     }
     
     .table-responsive {
         border-radius: 12px;
         overflow: hidden;
+        box-shadow: 0 2px 16px rgba(0,0,0,0.06);
     }
     
     .sticky-top {
@@ -256,25 +333,23 @@
                         <tr class="border-bottom">
                             <td class="py-3 px-4">
                                 <div class="d-flex align-items-center">
-                                    <i class="bi bi-calendar-date text-primary me-2"></i>
                                     <span class="fw-semibold">{{ entry.shift.date }}</span>
                                 </div>
                             </td>
                             <td class="py-3">
-                                <span class="badge 
-                                    {% if entry.shift.current_shift_type == 'Morning' %}bg-warning{% elif entry.shift.current_shift_type == 'Evening' %}bg-primary{% elif entry.shift.current_shift_type == 'Night' %}bg-dark{% else %}bg-secondary{% endif %} 
-                                    fs-6 px-3 py-2">
+                                <span class="badge text-dark fs-6 px-3 py-2" style="
+                                    {% if entry.shift.current_shift_type == 'Morning' %}background-color: #fff3cd; border: 1px solid #ffeaa7;{% elif entry.shift.current_shift_type == 'Evening' %}background-color: #cfe2ff; border: 1px solid #a6c8ff;{% elif entry.shift.current_shift_type == 'Night' %}background-color: #e2e3e5; border: 1px solid #c6c8ca;{% else %}background-color: #f8f9fa; border: 1px solid #dee2e6;{% endif %}">
                                     {% if entry.shift.current_shift_type == 'Morning' %}<i class="bi bi-sun me-1"></i>{% elif entry.shift.current_shift_type == 'Evening' %}<i class="bi bi-sunset me-1"></i>{% elif entry.shift.current_shift_type == 'Night' %}<i class="bi bi-moon me-1"></i>{% else %}<i class="bi bi-clock me-1"></i>{% endif %}
                                     {{ entry.shift.current_shift_type }}
                                 </span>
                             </td>
                             <td class="py-3">
                                 {% if entry.shift.status == 'draft' %}
-                                    <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+                                    <span class="badge text-dark fs-6 px-3 py-2" style="background-color: #fff3cd; border: 1px solid #ffeaa7;">
                                         <i class="bi bi-pencil me-1"></i>Draft
                                     </span>
                                 {% else %}
-                                    <span class="badge bg-success fs-6 px-3 py-2">
+                                    <span class="badge text-dark fs-6 px-3 py-2" style="background-color: #d1edff; border: 1px solid #a6d5f7;">
                                         <i class="bi bi-check-circle me-1"></i>Sent
                                     </span>
                                 {% endif %}
@@ -331,9 +406,10 @@
                                         {% endfor %}
                                     </div>
                                 {% else %}
-                                    <div class="text-center py-3">
-                                        <i class="bi bi-info-circle text-muted" style="font-size: 1.5rem;"></i>
-                                        <div class="text-muted mt-1">No incidents</div>
+                                    <div class="empty-state">
+                                        <i class="bi bi-info-circle"></i>
+                                        <div class="fw-medium">No incidents recorded</div>
+                                        <small class="text-muted">No incidents were reported for this shift</small>
                                     </div>
                                 {% endif %}
                             </td>
@@ -363,9 +439,10 @@
                                         </div>
                                     {% endfor %}
                                 {% else %}
-                                    <div class="text-center py-3">
-                                        <i class="bi bi-list text-muted" style="font-size: 1.5rem;"></i>
-                                        <div class="text-muted mt-1">No key points</div>
+                                    <div class="empty-state">
+                                        <i class="bi bi-list-check"></i>
+                                        <div class="fw-medium">No key points recorded</div>
+                                        <small class="text-muted">No key points were documented for this shift</small>
                                     </div>
                                 {% endif %}
                             </td>

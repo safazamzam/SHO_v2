@@ -14,10 +14,68 @@ ENV/
 .env
 .env.local
 .env.production
+.env.https
+.env.backup.*
+*.env
+
+# SSH Keys and Security Files
+gcp_ssh_key*
+*.pub
+*.pem
+*.key
+*.crt
+*.csr
+secrets/
+*.secret
+
+# SSL Certificates and Let's Encrypt data
+certs/
+certbot/
+nginx/ssl/
 
 # Flask instance folder
 instance/
 *.db
+*.sqlite
+
+# Database backups and sensitive data
+backups/
+*.sql
+*.dump
+
+# Docker secrets and volumes
+docker-secrets/
+volumes/
+
+# Logs
+logs/
+*.log
+nginx/logs/
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Testing and temporary files
+test_*.py
+temp/
+tmp/
+*.tmp
+
+# Application uploads
+uploads/
 
 # IDE files
 .vscode/
@@ -48,31 +106,6 @@ temp/
 # Database files
 *.sqlite
 *.sqlite3
-
-# SSH Keys and Credentials
-*.pem
-*.key
-*_key
-*_key.pub
-gcp_ssh_key
-gcp_ssh_key.pub
-
-# Sensitive Files
-*.sql
-*password*
-*secret*
-*credentials*
-
-# Azure DevOps
-.azure/
-
-# Coverage reports
-htmlcov/
-.coverage
-.pytest_cache/
-
-# SSO Debug logs
-sso_claims_debug.log
 *.db
 
 # Build files

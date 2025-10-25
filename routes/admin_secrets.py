@@ -334,6 +334,20 @@ def secrets_dashboard():
         smtp_auth_configured = bool(smtp_configs.get('SMTP_USERNAME') and smtp_configs.get('SMTP_PASSWORD'))
         smtp_email_configured = bool(smtp_configs.get('MAIL_FROM_ADDRESS'))
         
+        # Get application configuration values
+        app_config = {
+            'session_timeout': current_secrets_manager.get_secret('session_timeout', '3600'),
+            'max_workers': current_secrets_manager.get_secret('max_workers', '4'),
+            'log_level': current_secrets_manager.get_secret('log_level', 'INFO'),
+            'app_timezone': current_secrets_manager.get_secret('app_timezone', 'Asia/Kolkata'),
+            'day_shift_start': current_secrets_manager.get_secret('day_shift_start', '06:30'),
+            'day_shift_end': current_secrets_manager.get_secret('day_shift_end', '15:30'),
+            'evening_shift_start': current_secrets_manager.get_secret('evening_shift_start', '14:45'),
+            'evening_shift_end': current_secrets_manager.get_secret('evening_shift_end', '23:45'),
+            'night_shift_start': current_secrets_manager.get_secret('night_shift_start', '21:45'),
+            'night_shift_end': current_secrets_manager.get_secret('night_shift_end', '06:45')
+        }
+        
         response = make_response(render_template('admin/secrets_dashboard.html', 
                              secrets_by_category=secrets_by_category,
                              total_secrets=total_secrets,
@@ -349,6 +363,7 @@ def secrets_dashboard():
                              smtp_auth_configured=smtp_auth_configured,
                              smtp_email_configured=smtp_email_configured,
                              oauth_configured=oauth_configured,
+                             app_config=app_config,
                              last_updated="7:08:58 am",
                              secrets_status={'configured': True}))
         
@@ -389,6 +404,7 @@ def secrets_dashboard():
                              smtp_auth_configured=False,
                              smtp_email_configured=False,
                              oauth_configured=False,
+                             app_config={},
                              last_updated="Error",
                              secrets_status={'configured': False, 'error': True})
 
@@ -1135,3 +1151,394 @@ def add_secret_form():
         logger.error(f"Error loading add secret form: {e}")
         flash('Error loading add secret form', 'error')
         return redirect(url_for('admin_secrets.secrets_dashboard'))
+
+# New API endpoints for the Secrets Management Dashboard
+
+@admin_secrets_bp.route('/api/smtp', methods=['GET'])
+@admin_required
+def get_smtp_config():
+    """Get SMTP configuration from database using SMTPConfig model"""
+    try:
+        smtp_use_tls = SMTPConfig.get_config('smtp_use_tls', 'true').lower() == 'true'
+        smtp_use_ssl = SMTPConfig.get_config('smtp_use_ssl', 'false').lower() == 'true'
+        
+        # Determine security setting
+        security_type = 'None'
+        if smtp_use_ssl:
+            security_type = 'SSL'
+        elif smtp_use_tls:
+            security_type = 'TLS/STARTTLS'
+            
+        config = {
+            'smtp_server': SMTPConfig.get_config('smtp_server', ''),
+            'smtp_port': int(SMTPConfig.get_config('smtp_port', 587)),
+            'smtp_username': SMTPConfig.get_config('smtp_username', ''),
+            'smtp_password': '••••••••••••••••' if SMTPConfig.get_config('smtp_password') else '',
+            'smtp_from': SMTPConfig.get_config('mail_default_sender', ''),
+            'smtp_use_tls': smtp_use_tls,
+            'smtp_use_ssl': smtp_use_ssl,
+            'smtp_security': security_type
+        }
+        
+        return jsonify({'success': True, 'config': config})
+        
+    except Exception as e:
+        logger.error(f"Error getting SMTP config: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_secrets_bp.route('/api/smtp', methods=['POST'])
+@admin_required
+def save_smtp_config():
+    """Save SMTP configuration to smtp_config table using SMTPConfig model"""
+    try:
+        data = request.get_json()
+        
+        # Save each SMTP setting using SMTPConfig model
+        SMTPConfig.set_config('smtp_server', data.get('smtp_server', ''), 'SMTP server hostname', encrypted=False)
+        SMTPConfig.set_config('smtp_port', str(data.get('smtp_port', 587)), 'SMTP server port', encrypted=False)
+        SMTPConfig.set_config('smtp_username', data.get('smtp_username', ''), 'SMTP authentication username', encrypted=False)
+        
+        # Only update password if it's not the masked value
+        if data.get('smtp_password') and data.get('smtp_password') != '••••••••••••••••':
+            SMTPConfig.set_config('smtp_password', data.get('smtp_password', ''), 'SMTP authentication password', encrypted=True)
+        
+        SMTPConfig.set_config('mail_default_sender', data.get('smtp_from', ''), 'Default sender email address', encrypted=False)
+        SMTPConfig.set_config('smtp_use_tls', str(data.get('smtp_use_tls', True)).lower(), 'Enable TLS encryption', encrypted=False)
+        SMTPConfig.set_config('smtp_use_ssl', str(data.get('smtp_use_ssl', False)).lower(), 'Enable SSL encryption', encrypted=False)
+        
+        # Enable SMTP if configuration is provided
+        if data.get('smtp_server') and data.get('smtp_username'):
+            SMTPConfig.set_config('smtp_enabled', 'true', 'Enable/disable SMTP email functionality', encrypted=False)
+        
+        logger.info(f"SMTP configuration saved by user: {current_user.email}")
+        return jsonify({'success': True, 'message': 'SMTP configuration saved successfully'})
+        
+    except Exception as e:
+        logger.error(f"Error saving SMTP config: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_secrets_bp.route('/api/servicenow', methods=['GET'])
+@admin_required
+def get_servicenow_config():
+    """Get ServiceNow configuration from database using ServiceNowConfig model"""
+    try:
+        config = {
+            'servicenow_instance_url': ServiceNowConfig.get_config('instance_url', ''),
+            'servicenow_username': ServiceNowConfig.get_config('username', ''),
+            'servicenow_password': '••••••••' if ServiceNowConfig.get_config('password') else '',
+            'servicenow_assignment_groups': ServiceNowConfig.get_config('assignment_groups', ''),
+            'servicenow_timeout': int(ServiceNowConfig.get_config('timeout', 30)),
+            'servicenow_enabled': ServiceNowConfig.get_config('enabled', 'false').lower() == 'true'
+        }
+        
+        return jsonify({'success': True, 'config': config})
+        
+    except Exception as e:
+        logger.error(f"Error getting ServiceNow config: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_secrets_bp.route('/api/servicenow', methods=['POST'])
+@admin_required
+def save_servicenow_config():
+    """Save ServiceNow configuration to servicenow_config table using ServiceNowConfig model"""
+    try:
+        data = request.get_json()
+        
+        # Save each ServiceNow setting using ServiceNowConfig model
+        ServiceNowConfig.set_config('instance_url', data.get('servicenow_instance_url', ''), 'ServiceNow instance URL', encrypted=False)
+        ServiceNowConfig.set_config('username', data.get('servicenow_username', ''), 'ServiceNow API username', encrypted=False)
+        
+        # Only update password if it's not the masked value
+        if data.get('servicenow_password') and data.get('servicenow_password') != '••••••••':
+            ServiceNowConfig.set_config('password', data.get('servicenow_password', ''), 'ServiceNow API password', encrypted=True)
+        
+        ServiceNowConfig.set_config('assignment_groups', data.get('assignment_groups', ''), 'ServiceNow assignment groups to monitor', encrypted=False)
+        ServiceNowConfig.set_config('timeout', str(data.get('servicenow_timeout', 30)), 'ServiceNow API timeout in seconds', encrypted=False)
+        ServiceNowConfig.set_config('table', data.get('servicenow_table', 'incident'), 'Default ServiceNow table', encrypted=False)
+        
+        # Enable ServiceNow if configuration is provided
+        if data.get('servicenow_instance_url') and data.get('servicenow_username'):
+            ServiceNowConfig.set_config('enabled', 'true', 'Enable/disable ServiceNow integration', encrypted=False)
+        
+        logger.info(f"ServiceNow configuration saved by user: {current_user.email}")
+        return jsonify({'success': True, 'message': 'ServiceNow configuration saved successfully'})
+        
+    except Exception as e:
+        logger.error(f"Error saving ServiceNow config: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_secrets_bp.route('/api/application', methods=['GET'])
+@admin_required
+def get_application_config():
+    """Get Application configuration from database"""
+    try:
+        from models.app_config import AppConfig
+        
+        config = {
+            'database_url': 'mysql+pymysql://user:••••••••@db/shift_handover',  # Masked for security
+            'secret_key': '••••••••••••••••••••••••••••••••',  # Masked for security
+            'session_timeout': int(AppConfig.get_config('session_timeout', '3600')),
+            'max_workers': int(AppConfig.get_config('max_workers', '4')),
+            'log_level': AppConfig.get_config('log_level', 'INFO'),
+            'app_timezone': AppConfig.get_config('app_timezone', 'Asia/Kolkata'),
+            'day_shift_start': AppConfig.get_config('day_shift_start', '06:30'),
+            'day_shift_end': AppConfig.get_config('day_shift_end', '15:30'),
+            'evening_shift_start': AppConfig.get_config('evening_shift_start', '14:45'),
+            'evening_shift_end': AppConfig.get_config('evening_shift_end', '23:45'),
+            'night_shift_start': AppConfig.get_config('night_shift_start', '21:45'),
+            'night_shift_end': AppConfig.get_config('night_shift_end', '06:45')
+        }
+        
+        return jsonify({'success': True, 'config': config})
+        
+    except Exception as e:
+        logger.error(f"Error getting Application config: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@admin_secrets_bp.route('/api/application', methods=['POST'])
+@admin_required
+def save_application_config():
+    """Save Application configuration to database"""
+    try:
+        data = request.get_json()
+        from models.app_config import AppConfig
+        
+        # Save application settings (excluding critical secrets like database_url and secret_key)
+        AppConfig.set_config('session_timeout', str(data.get('session_timeout', 3600)), 'User session timeout', 'application')
+        AppConfig.set_config('max_workers', str(data.get('max_workers', 4)), 'Maximum worker processes', 'application')
+        AppConfig.set_config('log_level', data.get('log_level', 'INFO'), 'Application log level', 'application')
+        
+        # Save timezone configuration
+        AppConfig.set_config('app_timezone', data.get('app_timezone', 'Asia/Kolkata'), 'Application timezone', 'application')
+        
+        # Save shift timing configuration
+        AppConfig.set_config('day_shift_start', data.get('day_shift_start', '06:30'), 'Day shift start time', 'application')
+        AppConfig.set_config('day_shift_end', data.get('day_shift_end', '15:30'), 'Day shift end time', 'application')
+        AppConfig.set_config('evening_shift_start', data.get('evening_shift_start', '14:45'), 'Evening shift start time', 'application')
+        AppConfig.set_config('evening_shift_end', data.get('evening_shift_end', '23:45'), 'Evening shift end time', 'application')
+        AppConfig.set_config('night_shift_start', data.get('night_shift_start', '21:45'), 'Night shift start time', 'application')
+        AppConfig.set_config('night_shift_end', data.get('night_shift_end', '06:45'), 'Night shift end time', 'application')
+        
+        # Reload configuration in the app
+        from config import Config
+        from models.secrets_manager import HybridSecretsManager
+        secrets_mgr = HybridSecretsManager()
+        Config.init_from_database(secrets_mgr)
+        
+        return jsonify({'success': True, 'message': 'Application settings saved successfully'})
+        
+    except Exception as e:
+        logger.error(f"Error saving Application config: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# Alias endpoint for backward compatibility
+@admin_secrets_bp.route('/application-config', methods=['POST'])
+@admin_required
+def save_application_config_alias():
+    """Alias for application configuration - backward compatibility"""
+    return save_application_config()
+
+
+# ===========================
+# Email Recipients Configuration Routes
+# ===========================
+
+@admin_secrets_bp.route('/api/email-recipients', methods=['GET'])
+@login_required
+@superadmin_required
+def get_email_recipients():
+    """Get email recipients configuration"""
+    try:
+        from models.app_config import AppConfig
+        
+        config = {
+            'handover_recipients': AppConfig.get_config('handover_email_recipients', ''),
+            'priority_recipients': AppConfig.get_config('priority_alert_recipients', ''),
+            'notifications_enabled': AppConfig.get_config('email_notifications_enabled', 'true').lower() == 'true'
+        }
+        
+        return jsonify({'success': True, **config})
+        
+    except Exception as e:
+        logger.error(f"Error getting email recipients config: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_secrets_bp.route('/api/email-recipients', methods=['POST'])
+@login_required
+@superadmin_required
+def save_email_recipients():
+    """Save email recipients configuration"""
+    try:
+        data = request.get_json()
+        field = data.get('field')
+        emails = data.get('emails', '').strip()
+        
+        from models.app_config import AppConfig
+        
+        # Validate email format
+        if emails and not validate_email_list(emails):
+            return jsonify({'success': False, 'error': 'Invalid email format. Please use comma-separated valid email addresses.'}), 400
+        
+        # Map field names to config keys
+        field_mapping = {
+            'handover_email_recipients': 'handover_email_recipients',
+            'priority_alert_recipients': 'priority_alert_recipients'
+        }
+        
+        if field not in field_mapping:
+            return jsonify({'success': False, 'error': 'Invalid field name'}), 400
+        
+        config_key = field_mapping[field]
+        description = f"Email recipients for {field.replace('_', ' ').title()}"
+        
+        # Save to database
+        AppConfig.set_config(config_key, emails, description, 'email')
+        
+        # Log the action
+        from services.audit_service import log_action
+        log_action('Update Email Recipients', f'Updated {config_key}: {len(emails.split(",") if emails else [])} recipients')
+        
+        return jsonify({'success': True, 'message': f'{description} saved successfully'})
+        
+    except Exception as e:
+        logger.error(f"Error saving email recipients: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_secrets_bp.route('/api/email-notifications', methods=['POST'])
+@login_required
+@superadmin_required
+def toggle_email_notifications():
+    """Enable/disable email notifications"""
+    try:
+        data = request.get_json()
+        enabled = data.get('enabled', True)
+        
+        from models.app_config import AppConfig
+        
+        AppConfig.set_config('email_notifications_enabled', str(enabled).lower(), 
+                           'Enable/disable email notifications for handovers', 'email')
+        
+        # Log the action
+        from services.audit_service import log_action
+        log_action('Toggle Email Notifications', f'Email notifications {"enabled" if enabled else "disabled"}')
+        
+        return jsonify({'success': True, 'enabled': enabled})
+        
+    except Exception as e:
+        logger.error(f"Error toggling email notifications: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@admin_secrets_bp.route('/api/test-email-recipients', methods=['POST'])
+@login_required
+@superadmin_required
+def test_email_recipients():
+    """Send test emails to configured recipients"""
+    try:
+        data = request.get_json()
+        handover_recipients = data.get('handover_recipients', '').strip()
+        priority_recipients = data.get('priority_recipients', '').strip()
+        
+        from flask import current_app
+        mail = current_app.extensions.get('mail')
+        from flask_mail import Message
+        
+        if not mail:
+            return jsonify({'success': False, 'error': 'Email service not configured'}), 500
+        
+        # Prepare recipient lists
+        recipients_to_test = []
+        if handover_recipients:
+            recipients_to_test.extend([email.strip() for email in handover_recipients.split(',') if email.strip()])
+        if priority_recipients:
+            recipients_to_test.extend([email.strip() for email in priority_recipients.split(',') if email.strip()])
+        
+        # Remove duplicates
+        recipients_to_test = list(set(recipients_to_test))
+        
+        if not recipients_to_test:
+            return jsonify({'success': False, 'error': 'No recipients configured to test'}), 400
+        
+        # Send test email
+        subject = "🧪 Shift Handover Email Test - Configuration Verification"
+        
+        html_content = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <h2 style="margin: 0;">🧪 Email Configuration Test</h2>
+                <p style="margin: 10px 0 0 0;">This is a test email to verify your shift handover email configuration.</p>
+            </div>
+            
+            <div style="padding: 20px; background-color: #f8f9fa; border-radius: 8px; margin-bottom: 20px;">
+                <h3 style="color: #495057;">✅ Configuration Status</h3>
+                <p><strong>Test Recipients:</strong> {len(recipients_to_test)} email addresses</p>
+                <p><strong>Handover Recipients:</strong> {"Configured" if handover_recipients else "Not configured"}</p>
+                <p><strong>Priority Alert Recipients:</strong> {"Configured" if priority_recipients else "Not configured"}</p>
+                <p><strong>Test Time:</strong> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
+            </div>
+            
+            <div style="padding: 15px; background-color: #d1ecf1; border-radius: 5px; border-left: 4px solid #bee5eb;">
+                <p style="margin: 0;"><strong>✉️ If you received this email:</strong></p>
+                <p style="margin: 5px 0 0 0;">Your email configuration is working correctly! You will receive shift handover notifications at this address.</p>
+            </div>
+            
+            <div style="margin-top: 30px; padding: 15px; background-color: #f8f9fa; border-radius: 5px; font-size: 0.9em; color: #6c757d;">
+                <p style="margin: 0;"><strong>🔧 Generated by:</strong> Shift Handover Management System</p>
+                <p style="margin: 5px 0 0 0;"><strong>🏢 Administrator:</strong> {current_user.username}</p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        text_content = f"""
+        EMAIL CONFIGURATION TEST
+        ========================
+        
+        This is a test email to verify your shift handover email configuration.
+        
+        Configuration Status:
+        - Test Recipients: {len(recipients_to_test)} email addresses
+        - Handover Recipients: {"Configured" if handover_recipients else "Not configured"}
+        - Priority Alert Recipients: {"Configured" if priority_recipients else "Not configured"}
+        - Test Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        
+        If you received this email, your email configuration is working correctly!
+        
+        Generated by: Shift Handover Management System
+        Administrator: {current_user.username}
+        """
+        
+        msg = Message(subject=subject, recipients=recipients_to_test)
+        msg.body = text_content
+        msg.html = html_content
+        
+        mail.send(msg)
+        
+        # Log the action
+        from services.audit_service import log_action
+        log_action('Test Email Recipients', f'Test email sent to {len(recipients_to_test)} recipients')
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Test emails sent successfully to {len(recipients_to_test)} recipients',
+            'recipients_count': len(recipients_to_test)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error sending test emails: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def validate_email_list(email_string):
+    """Validate a comma-separated list of email addresses"""
+    if not email_string:
+        return True  # Empty is valid
+    
+    import re
+    emails = [email.strip() for email in email_string.split(',') if email.strip()]
+    email_regex = re.compile(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
+    
+    return all(email_regex.match(email) for email in emails)

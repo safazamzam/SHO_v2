@@ -50,8 +50,80 @@ class ServiceNowService:
                     self.logger.info(f"Instance: {self.instance_url}, Username: {self.username}, Password configured: {bool(self.password)}")
                     
                 else:
-                    # Fallback to environment variables (Flask config)
-                    self.logger.info("Database configuration not complete, falling back to environment variables...")
+                    # Fallback to secrets manager, then environment variables
+                    self.logger.info("Database configuration not complete, trying secrets manager...")
+                    
+                    try:
+                        from models.secrets_manager import HybridSecretsManager
+                        from models.models import db
+                        secrets_manager = HybridSecretsManager(db.session)
+                        
+                        if secrets_manager:
+                            self.instance_url = secrets_manager.get_secret('SERVICENOW_INSTANCE')
+                            self.username = secrets_manager.get_secret('SERVICENOW_USERNAME') 
+                            self.password = secrets_manager.get_secret('SERVICENOW_PASSWORD')
+                            self.timeout = int(secrets_manager.get_secret('SERVICENOW_TIMEOUT') or 30)
+                            assignment_groups_str = secrets_manager.get_secret('SERVICENOW_ASSIGNMENT_GROUPS') or ''
+                            
+                            # Parse assignment groups from comma-separated string
+                            if assignment_groups_str:
+                                self.assignment_groups = [group.strip() for group in assignment_groups_str.split(',') if group.strip()]
+                            else:
+                                self.assignment_groups = []
+                            
+                            self.logger.info("✅ ServiceNow configuration loaded from secrets manager")
+                            self.logger.info(f"Instance: {self.instance_url}, Username: {self.username}, Password configured: {bool(self.password)}")
+                        else:
+                            raise Exception("Secrets manager not available")
+                            
+                    except Exception as secrets_error:
+                        # Final fallback to environment variables (Flask config)
+                        self.logger.info(f"Secrets manager failed ({secrets_error}), falling back to environment variables...")
+                        self.instance_url = app.config.get('SERVICENOW_INSTANCE')
+                        self.username = app.config.get('SERVICENOW_USERNAME')
+                        self.password = app.config.get('SERVICENOW_PASSWORD')
+                        self.timeout = app.config.get('SERVICENOW_TIMEOUT', 30)
+                        self.assignment_groups = app.config.get('SERVICENOW_ASSIGNMENT_GROUPS', '')
+                        
+                        # Parse assignment groups from comma-separated string
+                        if self.assignment_groups:
+                            self.assignment_groups = [group.strip() for group in self.assignment_groups.split(',') if group.strip()]
+                        else:
+                            self.assignment_groups = []  # Empty list means monitor all groups
+                        
+                        self.logger.info("📄 ServiceNow configuration loaded from environment variables")
+                        self.logger.info(f"Instance: {self.instance_url}, Username: {self.username}, Password configured: {bool(self.password)}")
+                    
+            except Exception as e:
+                # Fallback to secrets manager, then environment variables if database error
+                self.logger.warning(f"Error loading database configuration: {str(e)}")
+                
+                try:
+                    self.logger.info("Trying secrets manager as fallback...")
+                    from config import get_secrets_manager
+                    secrets_manager = get_secrets_manager()
+                    
+                    if secrets_manager:
+                        self.instance_url = secrets_manager.get_secret('SERVICENOW_INSTANCE')
+                        self.username = secrets_manager.get_secret('SERVICENOW_USERNAME') 
+                        self.password = secrets_manager.get_secret('SERVICENOW_PASSWORD')
+                        self.timeout = int(secrets_manager.get_secret('SERVICENOW_TIMEOUT') or 30)
+                        assignment_groups_str = secrets_manager.get_secret('SERVICENOW_ASSIGNMENT_GROUPS') or ''
+                        
+                        # Parse assignment groups from comma-separated string
+                        if assignment_groups_str:
+                            self.assignment_groups = [group.strip() for group in assignment_groups_str.split(',') if group.strip()]
+                        else:
+                            self.assignment_groups = []
+                        
+                        self.logger.info("✅ ServiceNow configuration loaded from secrets manager (fallback)")
+                        self.logger.info(f"Instance: {self.instance_url}, Username: {self.username}, Password configured: {bool(self.password)}")
+                    else:
+                        raise Exception("Secrets manager not available")
+                        
+                except Exception as secrets_error:
+                    # Final fallback to environment variables
+                    self.logger.warning(f"Secrets manager also failed ({secrets_error}), using environment variables")
                     self.instance_url = app.config.get('SERVICENOW_INSTANCE')
                     self.username = app.config.get('SERVICENOW_USERNAME')
                     self.password = app.config.get('SERVICENOW_PASSWORD')
@@ -62,25 +134,7 @@ class ServiceNowService:
                     if self.assignment_groups:
                         self.assignment_groups = [group.strip() for group in self.assignment_groups.split(',') if group.strip()]
                     else:
-                        self.assignment_groups = []  # Empty list means monitor all groups
-                    
-                    self.logger.info("📄 ServiceNow configuration loaded from environment variables")
-                    self.logger.info(f"Instance: {self.instance_url}, Username: {self.username}, Password configured: {bool(self.password)}")
-                    
-            except Exception as e:
-                # Fallback to environment variables if database error
-                self.logger.warning(f"Error loading database configuration, using environment variables: {str(e)}")
-                self.instance_url = app.config.get('SERVICENOW_INSTANCE')
-                self.username = app.config.get('SERVICENOW_USERNAME')
-                self.password = app.config.get('SERVICENOW_PASSWORD')
-                self.timeout = app.config.get('SERVICENOW_TIMEOUT', 30)
-                self.assignment_groups = app.config.get('SERVICENOW_ASSIGNMENT_GROUPS', '')
-                
-                # Parse assignment groups from comma-separated string
-                if self.assignment_groups:
-                    self.assignment_groups = [group.strip() for group in self.assignment_groups.split(',') if group.strip()]
-                else:
-                    self.assignment_groups = []
+                        self.assignment_groups = []
             
             # Log final configuration status
             self.logger.info(f"Assignment Groups Filter: {self.assignment_groups if self.assignment_groups else 'ALL GROUPS'}")

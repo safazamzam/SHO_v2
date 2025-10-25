@@ -54,15 +54,6 @@ def admin_configuration():
         )
     ).all()
     
-    # Get ServiceNow configuration
-    try:
-        from models.servicenow_config import ServiceNowConfig
-        servicenow_configs = ServiceNowConfig.get_connection_config()
-        servicenow_configured = ServiceNowConfig.is_configured()
-    except Exception as e:
-        servicenow_configs = {}
-        servicenow_configured = False
-    
     # Organize configs by category
     configs_by_category = {}
     for config in all_configs:
@@ -73,9 +64,7 @@ def admin_configuration():
     
     return render_template('admin/configuration.html', 
                          configs_by_category=configs_by_category,
-                         all_configs=all_configs,
-                         servicenow_configs=servicenow_configs,
-                         servicenow_configured=servicenow_configured)
+                         all_configs=all_configs)
 
 @config_bp.route('/api/config/<config_key>')
 @login_required

@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request, jsonify, redirect
 
 from services.audit_service import log_action
 
@@ -8,6 +8,7 @@ from flask_mail import Mail
 from flask_migrate import Migrate
 from config import Config
 import os
+import time
 
 # Import secrets management system
 from models.secrets_manager import init_secrets_manager, secrets_manager
@@ -15,6 +16,30 @@ from models.secrets_manager import init_secrets_manager, secrets_manager
 # Initialize Flask app
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# Configure HTTPS and security headers for production
+if app.config.get('FORCE_HTTPS'):
+    try:
+        Config.configure_https_headers(app)
+    except ImportError:
+        # flask-talisman not installed, apply basic security headers
+        @app.after_request
+        def add_basic_security_headers(response):
+            if app.config.get('SECURE_HEADERS'):
+                response.headers['X-Content-Type-Options'] = 'nosniff'
+                response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+                response.headers['X-XSS-Protection'] = '1; mode=block'
+                response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+                response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+            return response
+
+# Add cache-busting headers
+@app.after_request
+def after_request(response):
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 # Log every page/tab visit
 @app.before_request
@@ -31,6 +56,42 @@ db.init_app(app)
 login_manager = LoginManager(app)
 mail = Mail(app)
 migrate = Migrate(app, db)
+
+# Initialize secrets manager and load configuration from database
+with app.app_context():
+    try:
+        # Initialize secrets manager with master key from Docker secrets
+        init_secrets_manager(db.session, app.config['SECRETS_MASTER_KEY'])
+        
+        # Load configuration from database
+        from config import Config
+        Config.init_from_database(secrets_manager)
+        
+        # Update app config with database values
+        app.config.update({
+            'MAIL_SERVER': Config.MAIL_SERVER,
+            'MAIL_PORT': Config.MAIL_PORT,
+            'MAIL_USE_TLS': Config.MAIL_USE_TLS,
+            'MAIL_USERNAME': Config.MAIL_USERNAME,
+            'MAIL_PASSWORD': Config.MAIL_PASSWORD,
+            'MAIL_DEFAULT_SENDER': Config.MAIL_DEFAULT_SENDER,
+            'APP_TIMEZONE': Config.APP_TIMEZONE,
+            'DAY_SHIFT_START': Config.DAY_SHIFT_START,
+            'DAY_SHIFT_END': Config.DAY_SHIFT_END,
+            'EVENING_SHIFT_START': Config.EVENING_SHIFT_START,
+            'EVENING_SHIFT_END': Config.EVENING_SHIFT_END,
+            'NIGHT_SHIFT_START': Config.NIGHT_SHIFT_START,
+            'NIGHT_SHIFT_END': Config.NIGHT_SHIFT_END,
+        })
+        
+        # Reinitialize mail with new config
+        mail.init_app(app)
+        
+        print("✅ Configuration loaded from database successfully")
+        
+    except Exception as e:
+        print(f"⚠️ Could not load configuration from database: {e}")
+        print("⚠️ Using default configuration values")
 
 # Import blueprints
 
@@ -364,5 +425,42 @@ def smtp_test():
     """Test page for SMTP configuration"""
     return render_template('smtp_test.html')
 
+# Health check endpoint for load balancer
+@app.route('/health')
+def health_check():
+    """Health check endpoint for monitoring and load balancers"""
+    try:
+        # Check database connection
+        from models.models import db
+        db.session.execute('SELECT 1')
+        db.session.commit()
+        
+        return jsonify({
+            'status': 'healthy',
+            'timestamp': time.time(),
+            'services': {
+                'database': 'up',
+                'application': 'up'
+            }
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'status': 'unhealthy',
+            'timestamp': time.time(),
+            'error': str(e),
+            'services': {
+                'database': 'down',
+                'application': 'up'
+            }
+        }), 503
+
+# Force HTTPS redirect for production
+@app.before_request
+def force_https():
+    """Force HTTPS in production"""
+    if app.config.get('FORCE_HTTPS') and not request.is_secure:
+        if request.headers.get('X-Forwarded-Proto') != 'https':
+            return redirect(request.url.replace('http://', 'https://'), code=301)
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

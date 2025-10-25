@@ -461,6 +461,11 @@
                             <span>Password</span>
                         </div>
                         <input type="password" class="form-input" id="password" name="password" placeholder="Enter your password" required>
+                        <div class="help-text">
+                            <a href="{{ url_for('auth.forgot_password') }}" style="color: #667eea; text-decoration: none; font-weight: 500;">
+                                <i class="fas fa-key me-1"></i>Forgot your password?
+                            </a>
+                        </div>
                     </div>
                     
                     <button type="submit" class="submit-button">

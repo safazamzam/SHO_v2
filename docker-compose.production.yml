@@ -1,0 +1,154 @@
+# Production Docker Compose with Secure Credential Management
+# Use this for production deployment with proper secret management
+
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # Core Flask Configuration
+      FLASK_ENV: production
+      FLASK_APP: app.py
+      
+      # Database Configuration (using Docker secrets)
+      DATABASE_URL_FILE: /run/secrets/database_url
+      
+      # These will be loaded from Docker secrets or environment
+      # SECRET_KEY will be loaded from /run/secrets/secret_key
+      # SSO_ENCRYPTION_KEY will be loaded from /run/secrets/sso_encryption_key
+      
+      # Email Configuration
+      SMTP_SERVER: smtp.gmail.com
+      SMTP_PORT: 587
+      # SMTP credentials loaded from secrets
+      
+      # ServiceNow Configuration
+      SERVICENOW_TIMEOUT: 30
+      # ServiceNow credentials loaded from secrets
+      
+      # Optional: Override with environment variables for development
+      # Uncomment and set these for local development only
+      # SECRET_KEY: ${SECRET_KEY:-}
+      # DATABASE_URL: ${DATABASE_URL:-}
+      # SMTP_USERNAME: ${SMTP_USERNAME:-}
+      # SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      
+    secrets:
+      - secret_key
+      - database_url
+      - sso_encryption_key
+      - smtp_username
+      - smtp_password
+      - servicenow_instance
+      - servicenow_username
+      - servicenow_password
+      - google_oauth_client_id
+      - google_oauth_client_secret
+    
+    depends_on:
+      - db
+    volumes:
+      - app_logs:/app/logs
+    restart: unless-stopped
+    
+    # Security settings
+    security_opt:
+      - no-new-privileges:true
+    read_only: false
+    tmpfs:
+      - /tmp
+    user: "1000:1000"  # Run as non-root user
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: shift_handover
+      MYSQL_USER: app_user
+      # Passwords loaded from Docker secrets
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+    
+    secrets:
+      - mysql_password
+      - mysql_root_password
+    
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    
+    restart: unless-stopped
+    
+    # Security settings
+    security_opt:
+      - no-new-privileges:true
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --innodb-buffer-pool-size=256M
+      --max-connections=100
+
+# Docker Secrets Configuration
+# These secrets should be created before deploying
+secrets:
+  secret_key:
+    external: true
+    name: flask_secret_key
+  
+  database_url:
+    external: true
+    name: database_url
+  
+  sso_encryption_key:
+    external: true
+    name: sso_encryption_key
+  
+  mysql_password:
+    external: true
+    name: mysql_app_password
+  
+  mysql_root_password:
+    external: true
+    name: mysql_root_password
+  
+  smtp_username:
+    external: true
+    name: smtp_username
+  
+  smtp_password:
+    external: true
+    name: smtp_password
+  
+  servicenow_instance:
+    external: true
+    name: servicenow_instance
+  
+  servicenow_username:
+    external: true
+    name: servicenow_username
+  
+  servicenow_password:
+    external: true
+    name: servicenow_password
+  
+  google_oauth_client_id:
+    external: true
+    name: google_oauth_client_id
+  
+  google_oauth_client_secret:
+    external: true
+    name: google_oauth_client_secret
+
+volumes:
+  mysql_data:
+    driver: local
+  app_logs:
+    driver: local
+
+networks:
+  default:
+    name: shift_handover_network
+    driver: bridge

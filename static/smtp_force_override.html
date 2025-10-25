@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Direct SMTP Override</title>
+    <style>
+        /* DIRECT INLINE OVERRIDE FOR SMTP */
+        #smtp * {
+            box-sizing: border-box !important;
+        }
+        
+        #smtp {
+            background: #f8f9fa !important;
+            padding: 1.5rem !important;
+        }
+        
+        #smtp .smtp-modern-container,
+        #smtp > div {
+            background: #ffffff !important;
+            border-radius: 12px !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1) !important;
+            margin: 0 !important;
+            overflow: hidden !important;
+            border: 1px solid rgba(59, 130, 246, 0.2) !important;
+        }
+        
+        /* Hide old content */
+        #smtp .config-section,
+        #smtp .field-input:not(.modern-input),
+        #smtp .form-grid:not(.form-row) {
+            display: none !important;
+        }
+        
+        /* Show only modern content */
+        #smtp .smtp-modern-container {
+            display: block !important;
+        }
+    </style>
+</head>
+<body>
+    <p>This CSS should be added to the template to force modern SMTP styling.</p>
+</body>
+</html>

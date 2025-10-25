@@ -1660,6 +1660,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!accountSelect || !teamSelect) return;
         
         var selectedAccount = accountSelect.value;
+        var currentTeamValue = teamSelect.value; // Preserve current selection
         var options = teamSelect.getElementsByTagName('option');
         
         for (var i = 0; i < options.length; i++) {
@@ -1674,7 +1675,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 opt.style.display = 'none';
             }
         }
-        teamSelect.value = '';
+        
+        // Only clear selection if current team doesn't belong to selected account
+        if (currentTeamValue) {
+            var currentTeamOption = teamSelect.querySelector('option[value="' + currentTeamValue + '"]');
+            if (currentTeamOption && currentTeamOption.getAttribute('data-account') !== selectedAccount) {
+                teamSelect.value = '';
+            }
+        }
     }
     
     // Initialize edit modals when they open

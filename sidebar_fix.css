@@ -1,0 +1,66 @@
+/* Emergency fix for sidebar icons not showing in collapsed state */
+.modern-sidebar.collapsed .nav-icon {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    font-size: 1.3rem !important;
+    color: #fff !important;
+    min-width: 20px !important;
+    text-align: center !important;
+}
+
+.modern-sidebar.collapsed .modern-nav-link {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding-left: 15px !important;
+}
+
+.modern-sidebar.collapsed .nav-text {
+    display: none !important;
+}
+
+.modern-sidebar.collapsed .section-icon {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    font-size: 1.2rem !important;
+    min-width: 20px !important;
+    text-align: center !important;
+}
+
+.modern-sidebar.collapsed .section-title span:not(.section-icon) {
+    display: none !important;
+}
+
+/* Force Bootstrap Icons to load and display */
+.bi::before {
+    display: inline-block !important;
+    font-family: bootstrap-icons !important;
+    font-style: normal !important;
+    font-weight: normal !important;
+    line-height: 1 !important;
+    vertical-align: -.125em !important;
+}
+
+/* Ensure the sidebar toggle works properly */
+.modern-sidebar {
+    transition: width 0.3s ease !important;
+}
+
+.modern-sidebar:not(.collapsed) {
+    width: 280px !important;
+}
+
+.modern-sidebar.collapsed {
+    width: 80px !important;
+}
+
+/* Debug styles - remove after testing */
+.modern-sidebar.collapsed * {
+    border: 1px solid red !important;
+}
+
+.modern-sidebar.collapsed .nav-icon {
+    background: yellow !important;
+}

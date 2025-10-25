@@ -1,0 +1,58 @@
+services:
+  db:
+    image: mysql:8.0
+    restart: always
+    secrets:
+      - mysql_root_password
+      - mysql_user_password
+    environment:
+      MYSQL_DATABASE: shift_handover
+      MYSQL_USER: user
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql_user_password
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - app-network
+
+  web:
+    build: .
+    command: python app.py
+    volumes:
+      - .:/app
+    ports:
+      - "5000:5000"
+    secrets:
+      - mysql_user_password
+      - secret_key
+      - secrets_master_key
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_HOST=db
+      - DATABASE_NAME=shift_handover
+      - DATABASE_USER=user
+      # Database password will be read from Docker secret
+      # All other configs will be loaded from database
+    depends_on:
+      - db
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  db_data:
+
+secrets:
+  mysql_root_password:
+    file: ./secrets/mysql_root_password.txt
+  mysql_user_password:
+    file: ./secrets/mysql_user_password.txt
+  secret_key:
+    file: ./secrets/secret_key.txt
+  secrets_master_key:
+    file: ./secrets/secrets_master_key.txt

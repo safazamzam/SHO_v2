@@ -172,11 +172,12 @@ def user_management():
                         new_role = request.form.get('role')
                         new_account_id = request.form.get('account_id', type=int)
                         new_team_id = request.form.get('team_id', type=int) if request.form.get('team_id') else None
-                        new_password = request.form.get('password')
+                        new_password = request.form.get('new_password')  # Fixed: was 'password', now 'new_password'
                         new_first_name = request.form.get('first_name', '').strip()
                         new_last_name = request.form.get('last_name', '').strip()
                         
-                        print(f"[DEBUG] Edit form data: username={new_username}, email={new_email}, role={new_role}, account_id={new_account_id}, team_id={new_team_id}, first_name={new_first_name}, last_name={new_last_name}")
+                        print(f"[DEBUG] Edit form data: username={new_username}, email={new_email}, role={new_role}, account_id={new_account_id}, team_id={new_team_id}, first_name={new_first_name}, last_name={new_last_name}, password={'***' if new_password else 'None'}")
+                        print(f"[DEBUG] Current user values: team_id={user.team_id}, account_id={user.account_id}")
                         
                         # Validate required fields
                         if not new_username:
@@ -221,6 +222,7 @@ def user_management():
                             user.password = generate_password_hash(new_password)
                         
                         db.session.commit()
+                        print(f"[DEBUG] After update - User: id={user.id}, username={user.username}, team_id={user.team_id}, account_id={user.account_id}")
                         log_action('Edit User', f'User ID: {user_id}, Username: {new_username}, Role: {new_role}, Account: {new_account_id}, Team: {new_team_id}')
                         flash('User updated successfully.')
                         print(f"[SUCCESS] User updated: {user}")

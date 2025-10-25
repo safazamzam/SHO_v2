@@ -171,9 +171,9 @@
                         </div>
                         
                         <div class="row">
-                            <!-- ServiceNow Integration - Enhanced visibility -->
-                            <div class="col-md-12 mb-4">
-                                <div class="d-flex justify-content-between align-items-center p-4 border border-info rounded bg-light">
+                            <!-- ServiceNow Integration -->
+                            <div class="col-md-6 mb-3">
+                                <div class="d-flex justify-content-between align-items-center p-4 border border-info rounded bg-light h-100">
                                     <div>
                                         <h6 class="mb-1 text-info">
                                             <i class="fas fa-cloud me-2"></i><strong>ServiceNow Integration</strong>
@@ -195,172 +195,28 @@
                                 </div>
                             </div>
 
-                            <!-- CTask Assignment -->
+                            <!-- CTask Assignment Dashboard -->
                             <div class="col-md-6 mb-3">
-                                <div class="d-flex justify-content-between align-items-center p-3 border rounded">
+                                <div class="d-flex justify-content-between align-items-center p-4 border rounded h-100">
                                     <div>
-                                        <strong>CTask Assignment Dashboard</strong>
-                                        <div class="config-description">Enable/Disable CTask assignment dashboard page and functionality</div>
+                                        <h6 class="mb-1">
+                                            <i class="fas fa-tasks me-2"></i><strong>CTask Assignment Dashboard</strong>
+                                        </h6>
+                                        <div class="config-description">
+                                            Enable/Disable CTask assignment dashboard page and functionality
+                                            <br><small class="text-muted">Controls automatic task assignment features</small>
+                                        </div>
                                         {% set ctask_config = all_configs|selectattr('config_key', 'equalto', 'feature_ctask_assignment')|first %}
                                         <span class="config-status {{ 'status-enabled' if ctask_config and ctask_config.config_value == 'true' else 'status-disabled' }}">
-                                            {{ 'Enabled' if ctask_config and ctask_config.config_value == 'true' else 'Disabled' }}
+                                            <i class="fas fa-circle me-1"></i>{{ 'Enabled' if ctask_config and ctask_config.config_value == 'true' else 'Disabled' }}
                                         </span>
                                     </div>
                                     <div class="form-check form-switch">
                                         <input class="form-check-input config-toggle" type="checkbox" name="feature_ctask_assignment"
+                                               style="transform: scale(1.5);"
                                                {% if ctask_config and ctask_config.config_value == 'true' %}checked{% endif %}>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ServiceNow Configuration Section -->
-                    <div class="config-card card p-4 mb-4">
-                        <h5 class="card-title mb-3">
-                            <i class="fas fa-cloud me-2"></i>ServiceNow Integration Settings
-                        </h5>
-                        
-                        <div class="alert alert-info mb-4">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong>ServiceNow Configuration:</strong> Configure your ServiceNow instance connection settings. 
-                            These settings are stored securely in the database and can be updated anytime.
-                        </div>
-                        
-                        <div class="row">
-                            <!-- Instance URL -->
-                            <div class="col-md-6 mb-3">
-                                <label for="servicenow_instance_url" class="form-label">
-                                    <i class="fas fa-link me-1"></i>Instance URL
-                                </label>
-                                <input type="text" class="form-control" id="servicenow_instance_url" 
-                                       name="servicenow_instance_url" 
-                                       placeholder="e.g., yourcompany.service-now.com"
-                                       value="{{ servicenow_configs.get('instance_url', '') }}">
-                                <div class="form-text">Your ServiceNow instance URL (without https://)</div>
-                            </div>
-                            
-                            <!-- Username -->
-                            <div class="col-md-6 mb-3">
-                                <label for="servicenow_username" class="form-label">
-                                    <i class="fas fa-user me-1"></i>Username
-                                </label>
-                                <input type="text" class="form-control" id="servicenow_username" 
-                                       name="servicenow_username" 
-                                       placeholder="ServiceNow API username"
-                                       value="{{ servicenow_configs.get('username', '') }}">
-                                <div class="form-text">ServiceNow API user account</div>
-                            </div>
-                            
-                            <!-- Password -->
-                            <div class="col-md-6 mb-3">
-                                <label for="servicenow_password" class="form-label">
-                                    <i class="fas fa-lock me-1"></i>Password
-                                </label>
-                                <input type="password" class="form-control" id="servicenow_password" 
-                                       name="servicenow_password" 
-                                       placeholder="ServiceNow API password"
-                                       value="{{ servicenow_configs.get('password', '') }}">
-                                <div class="form-text">ServiceNow API user password</div>
-                            </div>
-                            
-                            <!-- Assignment Groups -->
-                            <div class="col-md-6 mb-3">
-                                <label for="servicenow_assignment_groups" class="form-label">
-                                    <i class="fas fa-users me-1"></i>Assignment Groups
-                                </label>
-                                <input type="text" class="form-control" id="servicenow_assignment_groups" 
-                                       name="servicenow_assignment_groups" 
-                                       placeholder="e.g., Supply Chain - L2, Network Team"
-                                       value="{{ servicenow_configs.get('assignment_groups', '') }}">
-                                <div class="form-text">Comma-separated list of groups to monitor (leave empty for all groups)</div>
-                            </div>
-                            
-                            <!-- Timeout -->
-                            <div class="col-md-3 mb-3">
-                                <label for="servicenow_timeout" class="form-label">
-                                    <i class="fas fa-clock me-1"></i>Timeout
-                                </label>
-                                <input type="number" class="form-control" id="servicenow_timeout" 
-                                       name="servicenow_timeout" min="10" max="120"
-                                       placeholder="30"
-                                       value="{{ servicenow_configs.get('timeout', '30') }}">
-                                <div class="form-text">API timeout (seconds)</div>
-                            </div>
-                            
-                            <!-- Connection Status & Test Button -->
-                            <div class="col-md-9 mb-3">
-                                <label class="form-label">
-                                    <i class="fas fa-signal me-1"></i>Connection Status
-                                </label>
-                                <div class="d-flex align-items-center">
-                                    <span id="connection-status" class="badge me-3">
-                                        {% if servicenow_configured %}
-                                            <i class="fas fa-check-circle"></i> Configured
-                                        {% else %}
-                                            <i class="fas fa-exclamation-triangle"></i> Not Configured
-                                        {% endif %}
-                                    </span>
-                                    <button type="button" class="btn btn-outline-primary btn-sm" id="test-connection-btn">
-                                        <i class="fas fa-satellite-dish me-1"></i>Test Connection
-                                    </button>
-                                    <span id="test-result" class="ms-2"></span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Advanced Settings -->
-                        <div class="accordion mt-3" id="servicenowAdvanced">
-                            <div class="accordion-item">
-                                <h2 class="accordion-header" id="advancedHeading">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" 
-                                            data-bs-target="#advancedSettings" aria-expanded="false">
-                                        <i class="fas fa-cog me-2"></i>Advanced Settings
-                                    </button>
-                                </h2>
-                                <div id="advancedSettings" class="accordion-collapse collapse" 
-                                     data-bs-parent="#servicenowAdvanced">
-                                    <div class="accordion-body">
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" id="auto_fetch_incidents" 
-                                                           name="servicenow_auto_fetch_incidents"
-                                                           {% if servicenow_configs.get('auto_fetch_incidents', 'true') == 'true' %}checked{% endif %}>
-                                                    <label class="form-check-label" for="auto_fetch_incidents">
-                                                        Auto-fetch incidents for handover forms
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <div class="form-check form-switch">
-                                                    <input class="form-check-input" type="checkbox" id="auto_assign_ctasks" 
-                                                           name="servicenow_auto_assign_ctasks"
-                                                           {% if servicenow_configs.get('auto_assign_ctasks', 'true') == 'true' %}checked{% endif %}>
-                                                    <label class="form-check-label" for="auto_assign_ctasks">
-                                                        Auto-assign CTasks to on-shift engineers
-                                                    </label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="mt-4 pt-3 border-top">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <button type="button" class="btn btn-success me-2" id="save-servicenow-btn">
-                                        <i class="fas fa-save me-1"></i>Save ServiceNow Settings
-                                    </button>
-                                    <button type="button" class="btn btn-outline-secondary" id="clear-servicenow-btn">
-                                        <i class="fas fa-eraser me-1"></i>Clear Settings
-                                    </button>
-                                </div>
-                                <small class="text-muted">
-                                    <i class="fas fa-shield-alt me-1"></i>Settings are encrypted and stored securely
-                                </small>
                             </div>
                         </div>
                     </div>
@@ -380,8 +236,6 @@
     </div>
 </div>
 
-<script>
-<script>
 <script>
 // Simplified feature toggle management - focusing on form submission first
 document.querySelectorAll('.config-toggle').forEach(toggle => {
@@ -432,162 +286,6 @@ function showNotification(message, type = 'info') {
         }
     }, 5000);
 }
-
-// ServiceNow Configuration Management
-document.addEventListener('DOMContentLoaded', function() {
-    const testConnectionBtn = document.getElementById('test-connection-btn');
-    const saveServiceNowBtn = document.getElementById('save-servicenow-btn');
-    const clearServiceNowBtn = document.getElementById('clear-servicenow-btn');
-    const testResult = document.getElementById('test-result');
-    const connectionStatus = document.getElementById('connection-status');
-    
-    // Test ServiceNow Connection
-    if (testConnectionBtn) {
-        testConnectionBtn.addEventListener('click', function() {
-            const btn = this;
-            const originalText = btn.innerHTML;
-            
-            // Show loading state
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Testing...';
-            btn.disabled = true;
-            testResult.innerHTML = '';
-            
-            // Collect current form data
-            const formData = new FormData();
-            formData.append('instance_url', document.getElementById('servicenow_instance_url').value);
-            formData.append('username', document.getElementById('servicenow_username').value);
-            formData.append('password', document.getElementById('servicenow_password').value);
-            formData.append('timeout', document.getElementById('servicenow_timeout').value);
-            
-            fetch('/api/servicenow/test-connection-new', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                
-                if (data.success) {
-                    testResult.innerHTML = '<span class="badge bg-success"><i class="fas fa-check"></i> Connection Successful</span>';
-                    connectionStatus.innerHTML = '<i class="fas fa-check-circle"></i> Connected';
-                    connectionStatus.className = 'badge bg-success';
-                } else {
-                    testResult.innerHTML = '<span class="badge bg-danger"><i class="fas fa-times"></i> Connection Failed</span>';
-                    connectionStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Connection Error';
-                    connectionStatus.className = 'badge bg-danger';
-                    
-                    // Show error details
-                    if (data.error) {
-                        testResult.innerHTML += '<div class="text-danger small mt-1">' + data.error + '</div>';
-                    }
-                }
-            })
-            .catch(error => {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                testResult.innerHTML = '<span class="badge bg-danger"><i class="fas fa-exclamation-triangle"></i> Test Failed</span>';
-                console.error('Test connection error:', error);
-            });
-        });
-    }
-    
-    // Save ServiceNow Configuration
-    if (saveServiceNowBtn) {
-        saveServiceNowBtn.addEventListener('click', function() {
-            const btn = this;
-            const originalText = btn.innerHTML;
-            
-            // Show loading state
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Saving...';
-            btn.disabled = true;
-            
-            // Collect all ServiceNow form data
-            const formData = new FormData();
-            formData.append('instance_url', document.getElementById('servicenow_instance_url').value);
-            formData.append('username', document.getElementById('servicenow_username').value);
-            formData.append('password', document.getElementById('servicenow_password').value);
-            formData.append('assignment_groups', document.getElementById('servicenow_assignment_groups').value);
-            formData.append('timeout', document.getElementById('servicenow_timeout').value);
-            formData.append('auto_fetch_incidents', document.getElementById('auto_fetch_incidents').checked ? 'true' : 'false');
-            formData.append('auto_assign_ctasks', document.getElementById('auto_assign_ctasks').checked ? 'true' : 'false');
-            
-            fetch('/api/servicenow/save-configuration', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                
-                if (data.success) {
-                    // Show success message
-                    const alert = document.createElement('div');
-                    alert.className = 'alert alert-success alert-dismissible fade show mt-3';
-                    alert.innerHTML = `
-                        <i class="fas fa-check-circle me-2"></i>ServiceNow configuration saved successfully!
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    `;
-                    btn.parentNode.parentNode.appendChild(alert);
-                    
-                    // Update connection status
-                    connectionStatus.innerHTML = '<i class="fas fa-check-circle"></i> Configured';
-                    connectionStatus.className = 'badge bg-success';
-                    
-                    // Auto-remove alert after 5 seconds
-                    setTimeout(() => {
-                        if (alert.parentNode) {
-                            alert.remove();
-                        }
-                    }, 5000);
-                } else {
-                    // Show error message
-                    const alert = document.createElement('div');
-                    alert.className = 'alert alert-danger alert-dismissible fade show mt-3';
-                    alert.innerHTML = `
-                        <i class="fas fa-exclamation-triangle me-2"></i>Failed to save configuration: ${data.error || 'Unknown error'}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    `;
-                    btn.parentNode.parentNode.appendChild(alert);
-                }
-            })
-            .catch(error => {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                console.error('Save configuration error:', error);
-                
-                const alert = document.createElement('div');
-                alert.className = 'alert alert-danger alert-dismissible fade show mt-3';
-                alert.innerHTML = `
-                    <i class="fas fa-exclamation-triangle me-2"></i>Network error while saving configuration
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                `;
-                btn.parentNode.parentNode.appendChild(alert);
-            });
-        });
-    }
-    
-    // Clear ServiceNow Configuration
-    if (clearServiceNowBtn) {
-        clearServiceNowBtn.addEventListener('click', function() {
-            if (confirm('Are you sure you want to clear all ServiceNow configuration settings? This action cannot be undone.')) {
-                // Clear all form fields
-                document.getElementById('servicenow_instance_url').value = '';
-                document.getElementById('servicenow_username').value = '';
-                document.getElementById('servicenow_password').value = '';
-                document.getElementById('servicenow_assignment_groups').value = '';
-                document.getElementById('servicenow_timeout').value = '30';
-                document.getElementById('auto_fetch_incidents').checked = true;
-                document.getElementById('auto_assign_ctasks').checked = true;
-                
-                // Update status
-                testResult.innerHTML = '';
-                connectionStatus.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Not Configured';
-                connectionStatus.className = 'badge bg-warning';
-            }
-        });
-    }
-});
+</script>
 </script>
 {% endblock %}
