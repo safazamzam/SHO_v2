@@ -388,12 +388,18 @@
         <div class="sidebar-user-profile" onclick="toggleUserDropdown(event)">
             <div class="user-profile-content">
                 <div class="user-avatar-container">
-                    <img src="https://ui-avatars.com/api/?name={{ current_user.username|urlencode }}&background=74b9ff&color=fff&size=48" 
-                         alt="User Avatar" class="user-avatar-modern">
+                    {% if current_user.profile_picture %}
+                        <img src="{{ current_user.profile_picture }}" 
+                             alt="User Avatar" class="user-avatar-modern"
+                             onerror="this.src='https://ui-avatars.com/api/?name={{ current_user.display_name|urlencode }}&background=74b9ff&color=fff&size=48'">
+                    {% else %}
+                        <img src="https://ui-avatars.com/api/?name={{ current_user.display_name|urlencode }}&background=74b9ff&color=fff&size=48" 
+                             alt="User Avatar" class="user-avatar-modern">
+                    {% endif %}
                     <div class="user-status-indicator"></div>
                 </div>
                 <div class="user-info">
-                    <div class="user-name">{{ current_user.username }}</div>
+                    <div class="user-name">{{ current_user.display_name }}</div>
                     <div class="user-role">{{ current_user.role|title|replace('_', ' ') }}</div>
                 </div>
                 <i class="bi bi-chevron-right user-dropdown-arrow"></i>
@@ -487,14 +493,32 @@
                 </div>
                 <div class="modal-body">
                     <div class="text-center mb-4">
-                        <div class="bg-primary rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
-                            <i class="bi bi-person-fill text-white fs-1"></i>
-                        </div>
-                        <h4>{{ current_user.username }}</h4>
+                        {% if current_user.profile_picture %}
+                            <img src="{{ current_user.profile_picture }}" 
+                                 alt="User Avatar" class="rounded-circle mx-auto mb-3" 
+                                 style="width: 80px; height: 80px; object-fit: cover;"
+                                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div class="bg-primary rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 80px; height: 80px; display: none;">
+                                <i class="bi bi-person-fill text-white fs-1"></i>
+                            </div>
+                        {% else %}
+                            <div class="bg-primary rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style="width: 80px; height: 80px;">
+                                <i class="bi bi-person-fill text-white fs-1"></i>
+                            </div>
+                        {% endif %}
+                        <h4>{{ current_user.display_name }}</h4>
                         <p class="text-muted">{{ current_user.role|title }}</p>
                     </div>
                     <hr>
                     <div class="row">
+                        <div class="col-sm-4"><strong>Name:</strong></div>
+                        <div class="col-sm-8">{{ current_user.display_name }}</div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-sm-4"><strong>Email:</strong></div>
+                        <div class="col-sm-8">{{ current_user.email }}</div>
+                    </div>
+                    <div class="row mt-2">
                         <div class="col-sm-4"><strong>Username:</strong></div>
                         <div class="col-sm-8">{{ current_user.username }}</div>
                     </div>

@@ -318,20 +318,36 @@
 
     <!-- JavaScript for Enhanced Functionality -->
     <script>
-        // Real-time clock update
+        // Real-time clock update with consistent formatting
         function updateTime() {
             const now = new Date();
-            const options = { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                timeZone: 'Asia/Kolkata'
-            };
-            document.getElementById('current-time').textContent = now.toLocaleDateString('en-IN', options);
+            
+            // Define consistent day and month names to avoid fluctuation
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                              'July', 'August', 'September', 'October', 'November', 'December'];
+            
+            // Convert to IST (Asia/Kolkata timezone)
+            const istTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+            
+            // Extract date components
+            const dayName = dayNames[istTime.getDay()];
+            const day = istTime.getDate();
+            const monthName = monthNames[istTime.getMonth()];
+            const year = istTime.getFullYear();
+            
+            // Format time components with leading zeros
+            const hours = istTime.getHours().toString().padStart(2, '0');
+            const minutes = istTime.getMinutes().toString().padStart(2, '0');
+            const seconds = istTime.getSeconds().toString().padStart(2, '0');
+            
+            // Create consistent format: "Sunday, 26 October, 2025, 11:47:41 pm"
+            const period = istTime.getHours() >= 12 ? 'pm' : 'am';
+            const displayHours = istTime.getHours() % 12 || 12;
+            
+            const formattedTime = `${dayName}, ${day} ${monthName}, ${year}, ${displayHours}:${minutes}:${seconds} ${period}`;
+            
+            document.getElementById('current-time').textContent = formattedTime;
         }
         setInterval(updateTime, 1000);
         updateTime();
@@ -464,26 +480,8 @@
                 animateCounter(counter);
             });
 
-            // Enhanced Time Display
-            function updateTime() {
-                const now = new Date();
-                const options = {
-                    timeZone: 'Asia/Kolkata',
-                    weekday: 'short',
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                };
-                const timeString = now.toLocaleDateString('en-IN', options);
-                document.getElementById('current-time').textContent = timeString;
-            }
-            
-            // Update time every second
-            updateTime();
-            setInterval(updateTime, 1000);
+            // Time update is handled by the main function above
+            // Removed duplicate updateTime function to prevent conflicts
 
             // Card Hover Effects with 3D Transform
             document.querySelectorAll('.modern-stats-card').forEach(card => {

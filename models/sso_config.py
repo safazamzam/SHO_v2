@@ -82,16 +82,32 @@ class SSOConfig(db.Model):
     
     @staticmethod
     def _get_encryption_key():
-        """Get or create encryption key for sensitive data"""
+        """Get encryption key for sensitive data from Docker secrets"""
+        # First try environment variable (fastest)
         key = os.environ.get('SSO_ENCRYPTION_KEY')
-        if not key:
-            # Generate a new key (in production, store this securely)
-            key = Fernet.generate_key()
-            # You should store this key securely, not in code
-            print(f"⚠️  Generated new SSO encryption key: {key.decode()}")
-            print("⚠️  Please store this key securely in your environment variables as SSO_ENCRYPTION_KEY")
-        else:
-            key = key.encode()
+        if key:
+            return key.encode()
+        
+        # Try Docker secrets directly (avoid circular import)
+        docker_secret_paths = [
+            '/run/secrets/sso_encryption_key',  # Production Docker
+            './secrets/sso_encryption_key'      # Development
+        ]
+        
+        for secret_path in docker_secret_paths:
+            if os.path.exists(secret_path):
+                try:
+                    with open(secret_path, 'r') as f:
+                        key = f.read().strip()
+                        if key:
+                            return key.encode()
+                except Exception as e:
+                    print(f"Error reading SSO encryption key from {secret_path}: {e}")
+        
+        # Generate a new key as last resort
+        key = Fernet.generate_key()
+        print(f"⚠️  Generated new SSO encryption key: {key.decode()}")
+        print("⚠️  Please store this key securely in Docker secrets as 'sso_encryption_key'")
         return key
     
     @staticmethod

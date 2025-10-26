@@ -541,22 +541,29 @@ def _process_sso_user(user_data, provider_type, account_id):
             flash('No email found in SSO response', 'error')
             return redirect(url_for('auth.login'))
         
-        # Show name extraction process
-        current_app.logger.info("\n👤 NAME EXTRACTION PROCESS:")
-        first_name = user_data.get('given_name') or user_data.get('first_name')
-        last_name = user_data.get('family_name') or user_data.get('last_name')
+        # Show name extraction process - prioritize given_name and family_name
+        current_app.logger.info("\n👤 NAME EXTRACTION PROCESS (PRIORITIZED):")
+        first_name = (user_data.get('given_name') or 
+                     user_data.get('first_name') or 
+                     user_data.get('givenName'))
+        last_name = (user_data.get('family_name') or 
+                    user_data.get('last_name') or 
+                    user_data.get('surname'))
         full_name = user_data.get('name')
         username = user_data.get('preferred_username') or user_data.get('username') or email.split('@')[0]
         
-        current_app.logger.info(f"  given_name/first_name: {first_name}")
-        current_app.logger.info(f"  family_name/last_name: {last_name}")
-        current_app.logger.info(f"  name (full): {full_name}")
-        current_app.logger.info(f"  preferred_username/username: {username}")
+        current_app.logger.info(f"  ✅ First Name: {first_name} (source: {_get_claim_source(user_data, ['given_name', 'first_name', 'givenName'])})")
+        current_app.logger.info(f"  ✅ Last Name: {last_name} (source: {_get_claim_source(user_data, ['family_name', 'last_name', 'surname'])})")
+        current_app.logger.info(f"  📝 Full Name: {full_name}")
+        current_app.logger.info(f"  🔖 Username: {username}")
         
-        # Show profile picture extraction
-        current_app.logger.info("\n🖼️ PROFILE PICTURE EXTRACTION:")
-        picture = user_data.get('picture') or user_data.get('avatar') or user_data.get('photo')
-        current_app.logger.info(f"  picture/avatar/photo: {picture}")
+        # Show profile picture extraction - prioritize 'picture' claim
+        current_app.logger.info("\n🖼️ PROFILE PICTURE EXTRACTION (PRIORITIZED):")
+        picture = (user_data.get('picture') or 
+                  user_data.get('avatar') or 
+                  user_data.get('photo') or
+                  user_data.get('avatar_url'))
+        current_app.logger.info(f"  ✅ Picture URL: {picture} (source: {_get_claim_source(user_data, ['picture', 'avatar', 'photo', 'avatar_url'])})")
         
         current_app.logger.info("=" * 60)
         
@@ -597,16 +604,36 @@ def _process_sso_user(user_data, provider_type, account_id):
         flash('SSO authentication failed. Please try again.', 'error')
         return redirect(url_for('auth.login'))
 
+def _get_claim_source(user_data, claim_keys):
+    """Helper function to identify which claim key was used"""
+    for key in claim_keys:
+        if user_data.get(key):
+            return key
+    return "none"
+
 def _create_sso_user(user_data, provider_type, account_id):
     """Create new user from SSO data"""
     email = user_data.get('email') or user_data.get('mail') or user_data.get('preferred_username')
     
-    # Extract name components
-    first_name = user_data.get('first_name') or user_data.get('given_name') or user_data.get('givenName', '')
-    last_name = user_data.get('last_name') or user_data.get('family_name') or user_data.get('surname', '')
+    # Extract name components - prioritize given_name and family_name from SSO claims
+    first_name = (user_data.get('given_name') or 
+                 user_data.get('first_name') or 
+                 user_data.get('givenName', ''))
+    last_name = (user_data.get('family_name') or 
+                user_data.get('last_name') or 
+                user_data.get('surname', ''))
     
-    # Extract profile picture
-    profile_picture = user_data.get('picture') or user_data.get('avatar_url') or user_data.get('photo')
+    # Extract profile picture - prioritize 'picture' claim from SSO
+    profile_picture = (user_data.get('picture') or 
+                      user_data.get('avatar_url') or 
+                      user_data.get('photo'))
+    
+    # Log what we're using for the profile
+    current_app.logger.info(f"🔍 SSO USER CREATION - Profile Data:")
+    current_app.logger.info(f"  📧 Email: {email}")
+    current_app.logger.info(f"  👤 First Name: {first_name} (from: {_get_claim_source(user_data, ['given_name', 'first_name', 'givenName'])})")
+    current_app.logger.info(f"  👤 Last Name: {last_name} (from: {_get_claim_source(user_data, ['family_name', 'last_name', 'surname'])})")
+    current_app.logger.info(f"  🖼️ Profile Picture: {profile_picture} (from: {_get_claim_source(user_data, ['picture', 'avatar_url', 'photo'])})")
     
     # Generate username from email if not provided
     username = user_data.get('username') or user_data.get('preferred_username') or email.split('@')[0]
@@ -633,7 +660,7 @@ def _create_sso_user(user_data, provider_type, account_id):
     db.session.add(user)
     db.session.commit()
     
-    current_app.logger.info(f"Created new SSO user: {email} ({first_name} {last_name}) via {provider_type}")
+    current_app.logger.info(f"✅ Created new SSO user: {email} ({first_name} {last_name}) via {provider_type}")
     return user
 
 def _update_user_from_sso(user, user_data):
@@ -642,10 +669,23 @@ def _update_user_from_sso(user, user_data):
     user.is_active = True
     user.status = 'active'
     
-    # Update name fields from SSO data
-    first_name = user_data.get('first_name') or user_data.get('given_name') or user_data.get('givenName', '')
-    last_name = user_data.get('last_name') or user_data.get('family_name') or user_data.get('surname', '')
-    profile_picture = user_data.get('picture') or user_data.get('avatar_url') or user_data.get('photo')
+    # Update name fields from SSO data - prioritize given_name and family_name
+    first_name = (user_data.get('given_name') or 
+                 user_data.get('first_name') or 
+                 user_data.get('givenName', ''))
+    last_name = (user_data.get('family_name') or 
+                user_data.get('last_name') or 
+                user_data.get('surname', ''))
+    profile_picture = (user_data.get('picture') or 
+                      user_data.get('avatar_url') or 
+                      user_data.get('photo'))
+    
+    # Log what we're updating for the profile
+    current_app.logger.info(f"🔄 SSO USER UPDATE - Profile Data:")
+    current_app.logger.info(f"  📧 Email: {user.email}")
+    current_app.logger.info(f"  👤 First Name: {first_name} (from: {_get_claim_source(user_data, ['given_name', 'first_name', 'givenName'])})")
+    current_app.logger.info(f"  👤 Last Name: {last_name} (from: {_get_claim_source(user_data, ['family_name', 'last_name', 'surname'])})")
+    current_app.logger.info(f"  🖼️ Profile Picture: {profile_picture} (from: {_get_claim_source(user_data, ['picture', 'avatar_url', 'photo'])})")
     
     # Update fields if they have values
     if first_name:
@@ -656,6 +696,7 @@ def _update_user_from_sso(user, user_data):
         user.profile_picture = profile_picture
     
     db.session.commit()
+    current_app.logger.info(f"✅ Updated SSO user profile: {user.email} ({user.first_name} {user.last_name})")
 
 def _handle_account_team_selection(user, account_id):
     """Handle account and team selection for multi-tenant SSO users"""

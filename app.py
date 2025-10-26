@@ -432,7 +432,8 @@ def health_check():
     try:
         # Check database connection
         from models.models import db
-        db.session.execute('SELECT 1')
+        from sqlalchemy import text
+        db.session.execute(text('SELECT 1'))
         db.session.commit()
         
         return jsonify({

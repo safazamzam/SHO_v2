@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# SSL Certificate Setup Script for Let's Encrypt
-# This script helps set up SSL certificates for your domain
+# 🔒 SSL Certificate Setup Script for Shift Handover App
 
 set -e
 
@@ -9,118 +8,178 @@ set -e
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}🔒 Shift Handover App - HTTPS Setup Script${NC}"
+# Function to print colored output
+print_status() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+echo "🔒 SSL Certificate Setup for Shift Handover App"
 echo "=============================================="
 
-# Check if .env.production exists
-if [ ! -f ".env.production" ]; then
-    echo -e "${RED}❌ Error: .env.production file not found${NC}"
-    echo -e "${YELLOW}Please copy .env.production.template to .env.production and configure your settings${NC}"
+# Check if .env.domain exists
+if [ ! -f ".env.domain" ]; then
+    print_error ".env.domain file not found!"
+    print_status "Please run ./setup-domain.sh first to configure your domain."
     exit 1
 fi
 
-# Source environment variables
-source .env.production
+# Load environment variables
+source .env.domain
 
 # Validate required variables
-if [ -z "$DOMAIN_NAME" ] || [ -z "$CERTBOT_EMAIL" ]; then
-    echo -e "${RED}❌ Error: DOMAIN_NAME and CERTBOT_EMAIL must be set in .env.production${NC}"
+if [ -z "$DOMAIN_NAME" ] || [ -z "$EMAIL" ]; then
+    print_error "DOMAIN_NAME and EMAIL must be set in .env.domain"
     exit 1
 fi
 
-echo -e "${GREEN}📋 Configuration:${NC}"
-echo "   Domain: $DOMAIN_NAME"
-echo "   Email: $CERTBOT_EMAIL"
-echo ""
+print_status "Setting up SSL certificate for domain: $DOMAIN_NAME"
+print_status "Contact email: $EMAIL"
 
 # Create necessary directories
-echo -e "${GREEN}📁 Creating SSL directories...${NC}"
-mkdir -p ./certbot/conf
-mkdir -p ./certbot/www
-mkdir -p ./nginx/ssl
+print_status "Creating certificate directories..."
+mkdir -p certbot_conf
+mkdir -p certbot_www
+mkdir -p nginx/ssl
 
-# Generate DH parameters for better security (this may take a while)
-if [ ! -f "./nginx/ssl/dhparam.pem" ]; then
-    echo -e "${GREEN}🔐 Generating DH parameters (this may take a few minutes)...${NC}"
-    openssl dhparam -out ./nginx/ssl/dhparam.pem 2048
-    echo -e "${GREEN}✅ DH parameters generated${NC}"
+# Check if domain is accessible
+print_status "Checking domain accessibility..."
+if ! curl -f -s "http://$DOMAIN_NAME/.well-known/acme-challenge/test" > /dev/null 2>&1; then
+    print_warning "Domain might not be accessible yet. Continuing anyway..."
 fi
 
-# Create temporary nginx config for initial certificate request
-echo -e "${GREEN}📝 Creating temporary nginx configuration...${NC}"
-cat > ./nginx/conf.d/temp.conf << EOF
-server {
-    listen 80;
-    server_name $DOMAIN_NAME www.$DOMAIN_NAME;
-    
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-    
-    location / {
-        return 200 'Temporary server for SSL setup';
-        add_header Content-Type text/plain;
-    }
-}
-EOF
+# Check if certificate already exists
+if [ -f "certbot_conf/live/$DOMAIN_NAME/fullchain.pem" ]; then
+    print_warning "Certificate already exists for $DOMAIN_NAME"
+    read -p "Do you want to renew it? (y/n): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        print_status "Skipping certificate generation."
+        exit 0
+    fi
+fi
 
-# Start temporary containers for certificate generation
-echo -e "${GREEN}🐳 Starting temporary containers...${NC}"
-docker-compose -f docker-compose.https.yml up -d nginx
+# Stop any existing services that might conflict
+print_status "Ensuring clean environment..."
+docker-compose -f docker-compose.prod.yml down > /dev/null 2>&1 || true
 
-# Wait for nginx to be ready
-echo -e "${GREEN}⏳ Waiting for nginx to be ready...${NC}"
-sleep 10
+# Start nginx for certificate validation
+print_status "Starting nginx for certificate validation..."
+docker-compose -f docker-compose.prod.yml up -d nginx
 
-# Request SSL certificate
-echo -e "${GREEN}🔒 Requesting SSL certificate from Let's Encrypt...${NC}"
-docker-compose -f docker-compose.https.yml run --rm certbot \
-    certonly --webroot \
+# Wait for nginx to start
+sleep 5
+
+# Test nginx is running
+if ! docker-compose -f docker-compose.prod.yml ps nginx | grep -q "Up"; then
+    print_error "Nginx failed to start!"
+    exit 1
+fi
+
+print_success "Nginx started successfully"
+
+# Obtain SSL certificate
+print_status "Obtaining SSL certificate from Let's Encrypt..."
+docker run --rm \
+    --name certbot \
+    -v "$(pwd)/certbot_conf:/etc/letsencrypt" \
+    -v "$(pwd)/certbot_www:/var/www/certbot" \
+    certbot/certbot certonly \
+    --webroot \
     --webroot-path=/var/www/certbot \
-    --email $CERTBOT_EMAIL \
+    --email "$EMAIL" \
     --agree-tos \
     --no-eff-email \
     --force-renewal \
-    -d $DOMAIN_NAME \
-    -d www.$DOMAIN_NAME
+    -d "$DOMAIN_NAME"
+
+# Check if certificate was created
+if [ -f "certbot_conf/live/$DOMAIN_NAME/fullchain.pem" ]; then
+    print_success "SSL certificate obtained successfully!"
+    
+    # Display certificate information
+    print_status "Certificate details:"
+    docker run --rm \
+        -v "$(pwd)/certbot_conf:/etc/letsencrypt" \
+        certbot/certbot certificates | grep -A 10 "$DOMAIN_NAME"
+    
+    # Set up automatic renewal
+    print_status "Setting up automatic certificate renewal..."
+    
+    # Create renewal script
+    cat > renew-ssl.sh << 'EOF'
+#!/bin/bash
+echo "Renewing SSL certificates..."
+docker run --rm \
+    -v $(pwd)/certbot_conf:/etc/letsencrypt \
+    -v $(pwd)/certbot_www:/var/www/certbot \
+    certbot/certbot renew --quiet
 
 if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✅ SSL certificate successfully obtained!${NC}"
+    echo "Certificate renewed successfully. Restarting nginx..."
+    docker-compose -f docker-compose.prod.yml restart nginx
+    echo "Nginx restarted."
+else
+    echo "Certificate renewal failed!"
+fi
+EOF
     
-    # Remove temporary config
-    rm -f ./nginx/conf.d/temp.conf
+    chmod +x renew-ssl.sh
+    print_success "Created automatic renewal script: renew-ssl.sh"
     
-    # Replace domain placeholder in nginx config
-    sed -i "s/\${DOMAIN_NAME}/$DOMAIN_NAME/g" ./nginx/conf.d/https.conf
+    # Restart services with SSL
+    print_status "Restarting services with SSL configuration..."
+    docker-compose -f docker-compose.prod.yml restart
     
-    echo -e "${GREEN}🔄 Restarting containers with SSL configuration...${NC}"
-    docker-compose -f docker-compose.https.yml down
-    docker-compose -f docker-compose.https.yml up -d
+    # Wait for services to start
+    sleep 10
     
+    # Test HTTPS access
+    print_status "Testing HTTPS access..."
+    if curl -f -s -k "https://$DOMAIN_NAME" > /dev/null; then
+        print_success "HTTPS is working!"
+    else
+        print_warning "HTTPS test failed, but certificate is installed."
+    fi
+    
+    # Display final information
     echo ""
-    echo -e "${GREEN}🎉 SSL setup completed successfully!${NC}"
-    echo -e "${GREEN}Your application is now available at: https://$DOMAIN_NAME${NC}"
+    print_success "🎉 SSL Setup Complete!"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🌐 Your secure application is available at:"
+    echo "   https://$DOMAIN_NAME"
     echo ""
-    echo -e "${YELLOW}📝 Next steps:${NC}"
-    echo "   1. Test your application: https://$DOMAIN_NAME"
-    echo "   2. Check SSL rating: https://www.ssllabs.com/ssltest/"
-    echo "   3. Set up automatic certificate renewal (already configured)"
+    echo "📋 Next steps:"
+    echo "   1. Test your application: https://$DOMAIN_NAME/login"
+    echo "   2. Set up monitoring with: docker-compose -f docker-compose.prod.yml logs -f"
+    echo "   3. Automatic renewal is configured via renew-ssl.sh"
     echo ""
+    echo "🔄 Certificate will auto-renew before expiration"
+    echo "📅 Certificate expires: $(docker run --rm -v $(pwd)/certbot_conf:/etc/letsencrypt certbot/certbot certificates | grep -A 5 "$DOMAIN_NAME" | grep "Expiry Date" | cut -d: -f2-)"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     
 else
-    echo -e "${RED}❌ Failed to obtain SSL certificate${NC}"
-    echo -e "${YELLOW}Please check:${NC}"
-    echo "   1. Domain DNS is pointing to your server"
-    echo "   2. Port 80 is accessible from the internet"
-    echo "   3. No firewall blocking the connection"
+    print_error "Failed to obtain SSL certificate!"
+    print_status "Please check:"
+    echo "  1. Domain DNS is properly configured"
+    echo "  2. Firewall allows HTTP (port 80) traffic"
+    echo "  3. Domain is accessible from the internet"
+    echo ""
+    print_status "You can check logs with:"
+    echo "  docker-compose -f docker-compose.prod.yml logs nginx"
     exit 1
 fi
-
-# Setup auto-renewal check
-echo -e "${GREEN}📅 Setting up certificate auto-renewal...${NC}"
-(crontab -l 2>/dev/null; echo "0 12 * * * cd $(pwd) && docker-compose -f docker-compose.https.yml exec certbot certbot renew --quiet && docker-compose -f docker-compose.https.yml exec nginx nginx -s reload") | crontab -
-
-echo -e "${GREEN}✅ Auto-renewal configured${NC}"
-echo -e "${GREEN}🔒 HTTPS setup complete!${NC}"

@@ -1,31 +1,40 @@
-#!/usr/bin/env python3
-import sys
-sys.path.append('/app')
+from app import app, db
+from models.models import User
+from werkzeug.security import check_password_hash, generate_password_hash
 
-from models.models import User, db
-from werkzeug.security import check_password_hash
-from app import app
-
+# Initialize Flask app context
 with app.app_context():
-    user = User.query.filter_by(username='superadmin').first()
+    # Check all users and their password hashes
+    users = User.query.limit(5).all()
+    print("=== USER AUTHENTICATION DEBUG ===")
     
-    if user:
-        print(f"User found: {user.username}")
-        print(f"User ID: {user.id}")
+    for user in users:
+        print(f"\nUser: {user.username}")
+        print(f"Email: {user.email}")
         print(f"Role: {user.role}")
-        print(f"Is Active: {user.is_active}")
-        print(f"Status: {user.status}")
-        print(f"Account ID: {user.account_id}")
-        print(f"Team ID: {user.team_id}")
+        print(f"Active: {user.is_active}")
+        print(f"Password hash start: {user.password[:30]}...")
         
-        # Test password
-        test_password = 'admin123'
-        password_check = check_password_hash(user.password, test_password)
-        print(f"Password check result: {password_check}")
+        # Test if this is a Werkzeug hash
+        if user.password.startswith('pbkdf2:sha256:') or user.password.startswith('scrypt:'):
+            print("✅ Werkzeug compatible hash detected")
+        else:
+            print("⚠️ Non-Werkzeug hash detected - may need conversion")
+    
+    # Try to find superadmin and test authentication
+    superadmin = User.query.filter_by(username='superadmin').first()
+    if superadmin:
+        print(f"\n=== SUPERADMIN TEST ===")
+        print(f"Username: {superadmin.username}")
+        print(f"Email: {superadmin.email}")
+        print(f"Hash type: {superadmin.password[:20]}...")
         
-        # Test role check
-        role_check = user.role == 'super_admin'
-        print(f"Role check (super_admin): {role_check}")
-        
-    else:
-        print("User not found!")
+        # Common passwords to test
+        test_passwords = ['admin', 'admin123', 'password', 'superadmin', '123456']
+        for pwd in test_passwords:
+            if check_password_hash(superadmin.password, pwd):
+                print(f"✅ Password '{pwd}' works!")
+                break
+        else:
+            print("❌ None of the test passwords work")
+            print("💡 Password may need to be reset")

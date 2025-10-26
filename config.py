@@ -25,6 +25,17 @@ class SecureConfigManager:
             except Exception as e:
                 logging.error(f"Error reading Docker secret {secret_name}: {e}")
         
+        # Try local secrets directory (development/testing)
+        local_secret_file = f"./secrets/{secret_name.lower()}"
+        if os.path.exists(local_secret_file):
+            try:
+                with open(local_secret_file, 'r') as f:
+                    value = f.read().strip()
+                    logging.info(f"✅ Loaded {secret_name} from local secrets file")
+                    return value
+            except Exception as e:
+                logging.error(f"Error reading local secret {secret_name}: {e}")
+        
         # Fallback to environment variables for development
         env_value = os.environ.get(secret_name.upper())
         if env_value:
@@ -35,10 +46,10 @@ class SecureConfigManager:
         is_development = os.environ.get('FLASK_ENV', 'development') == 'development'
         
         # For development, provide secure defaults instead of failing
-        if is_development and secret_name in ['secret_key', 'secrets_master_key']:
-            if secret_name == 'secret_key':
+        if is_development and secret_name in ['flask_secret_key', 'secrets_master_key']:
+            if secret_name == 'flask_secret_key':
                 # Read from secrets file if it exists, otherwise generate
-                secret_file_path = './secrets/secret_key.txt'
+                secret_file_path = './secrets/flask_secret_key'
                 if os.path.exists(secret_file_path):
                     try:
                         with open(secret_file_path, 'r') as f:
@@ -86,18 +97,38 @@ class SecureConfigManager:
     @staticmethod
     def build_database_url():
         """Build database URL from Docker secrets or environment variables"""
+        
+        # First try to read full DATABASE_URL from Docker secret file
+        database_url_file = os.environ.get('DATABASE_URL_FILE')
+        if database_url_file and os.path.exists(database_url_file):
+            try:
+                with open(database_url_file, 'r') as f:
+                    database_url = f.read().strip()
+                    logging.info("✅ Using DATABASE_URL from Docker secret file")
+                    return database_url
+            except Exception as e:
+                logging.warning(f"⚠️ Could not read DATABASE_URL_FILE: {e}")
+        
+        # Try to get full DATABASE_URL from Docker secret
+        database_url = SecureConfigManager.get_docker_secret('database_url')
+        if database_url:
+            logging.info("✅ Using DATABASE_URL from Docker secret")
+            return database_url
+        
         # Try to get individual components for Docker secrets
-        host = os.environ.get('DATABASE_HOST', 'localhost')
+        host = os.environ.get('DATABASE_HOST', 'db')
         port = os.environ.get('DATABASE_PORT', '3306')
         name = os.environ.get('DATABASE_NAME', 'shift_handover')
         user = os.environ.get('DATABASE_USER', 'user')
         
-        # Get password from Docker secret
-        password = SecureConfigManager.get_docker_secret('mysql_user_password')
+        # Get password from Docker secret (try multiple possible names)
+        password = (SecureConfigManager.get_docker_secret('mysql_user_password') or 
+                   SecureConfigManager.get_docker_secret('mysql_password') or
+                   os.environ.get('DATABASE_PASSWORD'))
         
         if password:
             database_url = f"mysql+pymysql://{user}:{password}@{host}:{port}/{name}"
-            logging.info("✅ Built database URL from Docker secrets")
+            logging.info("✅ Built database URL from Docker secrets/environment")
             return database_url
         
         # Fallback to full DATABASE_URL from environment
@@ -131,7 +162,7 @@ class Config:
     """Base configuration class with Docker secrets + database storage"""
     
     # Core Flask settings - FROM DOCKER SECRETS OR DEVELOPMENT FALLBACKS
-    SECRET_KEY = secure_config.get_docker_secret('secret_key', required=False)
+    SECRET_KEY = secure_config.get_docker_secret('flask_secret_key', required=False)
     
     # Database configuration - FROM DOCKER SECRETS OR DEVELOPMENT FALLBACKS  
     SQLALCHEMY_DATABASE_URI = secure_config.build_database_url()
@@ -143,6 +174,9 @@ class Config:
     
     # Master key for encrypting secrets in database - FROM DOCKER SECRETS OR DEVELOPMENT FALLBACKS
     SECRETS_MASTER_KEY = secure_config.get_docker_secret('secrets_master_key', required=False)
+    
+    # SSO encryption key for SSO configuration secrets - FROM DOCKER SECRETS OR DEVELOPMENT FALLBACKS
+    SSO_ENCRYPTION_KEY = secure_config.get_docker_secret('sso_encryption_key', required=False)
     
     # All other configuration will be loaded from database via SecretsManager
     # This includes:
@@ -236,7 +270,7 @@ class Config:
             return False
     
     # Security settings
-    SESSION_COOKIE_SECURE = os.environ.get('FLASK_ENV') == 'production'
+    SESSION_COOKIE_SECURE = os.environ.get('FORCE_HTTPS', 'false').lower() == 'true'
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     PERMANENT_SESSION_LIFETIME = 86400  # 24 hours
