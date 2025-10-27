@@ -1,10 +1,24 @@
-# 🚀 Shift Handover Application v2 - Complete HTTPS Ready
+# 🚀 Shift Handover Application v2 - Production Ready
 
-A comprehensive Flask-based shift handover management system with email notifications, HTTPS deployment, SSO integration, and modern admin interface.
+A comprehensive Flask-based shift handover management system with SSO authentication, nginx reverse proxy, production deployment, and modern admin interface.
 
 ## 🆕 Latest Updates (October 2025)
 
-### ✨ Major Features Added
+### ✨ Major Features Completed ✅
+
+#### � SSO Authentication (WORKING)
+- **✅ Google OAuth Integration**: Fully implemented and tested
+- **✅ User Profile Display**: Shows given_name, family_name, and picture
+- **✅ Claims Integration**: Complete user profile from SSO provider
+- **✅ Admin Configuration**: Visual dashboard for managing SSO providers
+- **✅ Secure Storage**: Encrypted configuration using Fernet encryption
+
+#### 🌐 Production Deployment (WORKING)
+- **✅ Port Mapping**: Direct IP access without port specification
+- **✅ nginx Reverse Proxy**: Production-grade proxy with security headers
+- **✅ Docker Compose**: Ready-to-deploy production configuration
+- **✅ Health Monitoring**: Working health endpoint at `/health`
+- **✅ Current Access**: `http://35.200.202.18` (Port 80 → Flask 5000)
 
 #### 📧 Email Recipients Management
 - **Admin Dashboard Integration**: New "Email Recipients" tab in Secrets Management
@@ -12,16 +26,9 @@ A comprehensive Flask-based shift handover management system with email notifica
 - **Email Testing**: Built-in test functionality to verify email delivery
 - **Toggle Notifications**: Enable/disable email notifications globally
 
-#### 🔒 Production HTTPS Deployment
-- **Complete SSL Setup**: Automated Let's Encrypt certificate generation
-- **Nginx Reverse Proxy**: Production-grade proxy with security headers
-- **Docker Compose**: Ready-to-deploy HTTPS configuration
-- **Certificate Auto-Renewal**: Automated SSL certificate renewal setup
-
 #### 🛡️ Enhanced Security
 - **Security Headers**: HSTS, CSP, XSS protection
 - **Rate Limiting**: Protection against brute force attacks
-- **HTTPS Enforcement**: Automatic HTTP to HTTPS redirect
 - **Secure Session Management**: Production-ready session configuration
 
 ## ✨ Key Features
@@ -41,13 +48,250 @@ A comprehensive Flask-based shift handover management system with email notifica
 - **Audit Logging**: Comprehensive activity tracking and reporting
 - **Email Notifications**: Automated notifications with configurable recipients
 
-### 🎯 Quick Start for HTTPS Deployment
+## 🚀 Quick Deployment Guide
 
-1. **Configure Domain**: Point your domain to server IP with NAT
-2. **Environment Setup**: Copy `.env.https.template` to `.env.production`
-3. **Deploy**: Run `deploy-https.ps1` or follow `QUICK_HTTPS_SETUP.md`
+### 🎯 Option 1: Production Deployment (Current Setup)
 
-```powershell
+**Current Status**: ✅ **WORKING** - Application accessible at `http://35.200.202.18`
+
+1. **Clone the Repository**
+```bash
+git clone https://git.garage.epam.com/shift-handover-automation/shifthandover.git
+cd shifthandover
+```
+
+2. **Quick Production Setup**
+```bash
+# Run the automated port mapping script
+chmod +x simple-port-mapping.sh
+./simple-port-mapping.sh
+```
+
+3. **Verify Deployment**
+```bash
+# Check health endpoint
+curl http://35.200.202.18/health
+
+# Expected response:
+{
+  "services": {
+    "application": "up",
+    "database": "up"
+  },
+  "status": "healthy"
+}
+```
+
+### 🎯 Option 2: Domain-Based Deployment (Future)
+
+For domain access with `handover.lab.epam.com`:
+
+1. **Configure Domain Environment**
+```bash
+cp .env.epam-lab .env.production
+# Configure NAT mapping: handover.lab.epam.com → 35.200.202.18
+
+# Deploy with domain support
+chmod +x setup-epam-lab.sh
+./setup-epam-lab.sh
+```
+
+### 🎯 Option 3: Local Development Setup
+
+```bash
+# Clone repository
+git clone https://git.garage.epam.com/shift-handover-automation/shifthandover.git
+cd shifthandover
+
+# Create virtual environment
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+source .venv/bin/activate  # Linux/Mac
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Set up local environment
+cp .env.example .env
+# Edit .env with your configuration
+
+# Initialize database
+python init_local_db.py
+
+# Run development server
+python run_local.py
+# Access: http://localhost:5000
+```
+
+## 🔧 Production Architecture
+
+### Current Setup
+```
+Internet → 35.200.202.18:80 → nginx → Flask App:5000 → MySQL Database
+```
+
+### Services Running
+- **nginx**: Reverse proxy (Port 80 → 5000)
+- **Flask App**: Main application (Port 5000)
+- **MySQL**: Database (Port 3306)
+- **Health Check**: Available at `/health`
+
+## 🔧 SSO Configuration
+
+### Google OAuth Setup (Working)
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create or select a project
+3. Enable Google+ API
+4. Create OAuth 2.0 credentials
+5. Set authorized redirect URI: `http://35.200.202.18/auth/sso/callback/google_oauth`
+6. Copy Client ID and Client Secret to SSO configuration
+7. **Status**: ✅ Configured and working
+
+### Test SSO Integration
+```bash
+# Access the application
+curl http://35.200.202.18/login
+
+# Or visit in browser:
+# http://35.200.202.18/login
+```
+
+## 🚢 Docker Commands
+
+### Production Deployment
+```bash
+# Start production services
+docker-compose -f docker-compose.prod.yml up -d
+
+# Check service status
+docker-compose -f docker-compose.prod.yml ps
+
+# View logs
+docker-compose -f docker-compose.prod.yml logs nginx
+docker-compose -f docker-compose.prod.yml logs web
+
+# Restart services
+docker-compose -f docker-compose.prod.yml restart
+```
+
+### Maintenance Commands
+```bash
+# Clean nginx configuration conflicts
+chmod +x cleanup-nginx.sh
+./cleanup-nginx.sh
+
+# Backup application
+./scripts/backup_application.sh
+
+# Deploy updates
+./scripts/vm_deploy.sh
+```
+
+## 🔒 Security Features
+- **✅ Encrypted Storage**: All SSO configurations encrypted using Fernet
+- **✅ Environment Variables**: Sensitive data stored in environment variables
+- **✅ CSRF Protection**: Built-in cross-site request forgery protection
+- **✅ Session Security**: Secure session management with proper timeouts
+- **✅ Role-Based Access**: Admin-only access to sensitive configurations
+- **✅ Rate Limiting**: nginx-based rate limiting for API endpoints
+- **✅ Security Headers**: Comprehensive security headers implementation
+
+## 📊 Monitoring & Health Checks
+
+### Health Endpoint
+```bash
+# Check application health
+curl http://35.200.202.18/health
+
+# Check specific services
+curl http://35.200.202.18/health?service=database
+curl http://35.200.202.18/health?service=application
+```
+
+### Application Monitoring
+- **Application Logs**: Comprehensive logging with rotating file handlers
+- **Audit Trail**: User activity tracking and security auditing
+- **Health Checks**: Built-in health monitoring endpoints
+- **Performance Metrics**: Response time and usage analytics
+
+## 🌐 Access Information
+
+### Current Production Access
+- **Main Application**: http://35.200.202.18
+- **Health Check**: http://35.200.202.18/health
+- **SSO Login**: http://35.200.202.18/login
+- **Admin Dashboard**: http://35.200.202.18/admin/configuration
+
+### Future Domain Access (After NAT Setup)
+- **Main Application**: http://handover.lab.epam.com
+- **Health Check**: http://handover.lab.epam.com/health
+
+## 🛠 Technical Stack
+- **Backend**: Flask, SQLAlchemy, MySQL
+- **Frontend**: Modern HTML5, CSS3, JavaScript with responsive design
+- **Authentication**: Flask-Login with Google OAuth SSO
+- **Proxy**: nginx reverse proxy with rate limiting
+- **Security**: Encrypted configurations, CSRF protection, secure sessions
+- **Deployment**: Docker Compose, automated scripts
+- **API Integration**: ServiceNow REST API, OAuth 2.0 providers
+
+## 📚 Documentation Files
+
+- **[Production Deployment Guide](PRODUCTION_DEPLOYMENT_GUIDE.md)**: Complete deployment instructions
+- **[nginx Fix Guide](NGINX_FIX_GUIDE.md)**: Troubleshooting nginx issues
+- **[Domain Setup Guide](DOMAIN_SETUP_GUIDE.md)**: Domain configuration
+- **[VM Deployment Success](VM_DEPLOYMENT_SUCCESS.md)**: Deployment verification
+
+## 🚀 Quick Commands Reference
+
+### Deployment
+```bash
+# Quick production setup
+./simple-port-mapping.sh
+
+# Domain setup (future)
+./setup-epam-lab.sh
+
+# Clean nginx conflicts
+./cleanup-nginx.sh
+```
+
+### Monitoring
+```bash
+# Check services
+docker-compose -f docker-compose.prod.yml ps
+
+# Test health
+curl http://35.200.202.18/health
+
+# View logs
+docker-compose -f docker-compose.prod.yml logs -f
+```
+
+### Maintenance
+```bash
+# Restart nginx
+docker-compose -f docker-compose.prod.yml restart nginx
+
+# Update application
+git pull origin main
+docker-compose -f docker-compose.prod.yml up -d --build web
+```
+
+## 🌐 GitLab Integration
+- **Repository**: https://git.garage.epam.com/shift-handover-automation/shifthandover
+- **Current Branch**: main
+- **Latest Commit**: Complete SSO implementation with port mapping
+- **CI/CD Pipelines**: Available for automated build and deployment
+
+---
+
+**🎉 Status**: Production Ready ✅  
+**🌐 Access**: http://35.200.202.18  
+**🔐 SSO**: Google OAuth Working ✅  
+**💾 Repository**: https://git.garage.epam.com/shift-handover-automation/shifthandover  
+**📅 Last Updated**: October 27, 2025  
+**🏷 Version**: 2.0 with Complete SSO Integration and Production Deployment
 # Quick deployment command
 Copy-Item .env.https.template .env.production
 # Edit .env.production with your domain and credentials

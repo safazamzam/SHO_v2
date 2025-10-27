@@ -1,14 +1,35 @@
-# Backup and Restore Scripts for GCP VM
+# 🚀 Deployment and Management Scripts
 
-This directory contains comprehensive backup and restore scripts for your Shift Handover Application running on GCP VM.
+This directory contains production deployment and management scripts for the Shift Handover Application.
 
 ## 📁 Scripts Overview
 
-### 1. `backup_application.sh`
+### 🚀 Deployment Scripts
+
+#### 1. `vm_deploy.sh`
+Primary deployment script for production VM setup:
+- Deploys application to GCP VM (35.200.202.18)
+- Configures Docker Compose production environment
+- Sets up nginx reverse proxy with port mapping
+- Verifies deployment health
+
+**Usage:**
+```bash
+./vm_deploy.sh
+```
+
+**Features:**
+- Automatic Docker Compose setup
+- nginx configuration with port 80 → 5000 mapping
+- Health check verification
+- Production environment configuration
+
+#### 2. `backup_application.sh`
 Complete application backup script that creates:
 - Application files backup (compressed tar.gz)
-- Database backup (PostgreSQL dump)
+- Database backup (MySQL dump)
 - Configuration files backup
+- nginx configuration backup
 - Application logs backup
 - Backup manifest with metadata
 
@@ -19,35 +40,75 @@ Complete application backup script that creates:
 
 **Features:**
 - Automatic retention management
-- Docker and local PostgreSQL support
+- Docker MySQL support
 - Comprehensive logging
 - Error handling and notifications
+- Backup to multiple locations
 
-### 2. `db_backup.sh`
-Dedicated database backup and restore utility:
-- Create database backups
-- Restore from backups
-- List available backups
-- Cleanup old backups
-- Schedule automatic backups
+### 🔧 Configuration Scripts
 
-**Usage:**
+#### Available in Root Directory:
+
+1. **`simple-port-mapping.sh`** ✅ **WORKING**
+   - Maps port 80 → 5000 for direct IP access
+   - Cleans conflicting nginx configurations
+   - Enables access via `http://35.200.202.18`
+
+2. **`cleanup-nginx.sh`** ✅ **COMPREHENSIVE**
+   - Comprehensive nginx cleanup and configuration
+   - Fixes duplicate rate limiting zones
+   - Sets up clean reverse proxy configuration
+
+3. **`setup-epam-lab.sh`**
+   - Domain setup for `handover.lab.epam.com`
+   - Requires NAT configuration
+
+4. **`setup-http-only.sh`**
+   - HTTP-only deployment without SSL
+   - Suitable for development/testing
+
+### 🔐 SSO and User Management
+
+#### Available in Root Directory:
+
+1. **`update_sso_profile.py`** ✅ **WORKING**
+   - Updates user profiles from SSO claims
+   - Integrates given_name, family_name, picture
+
+2. **`create_admin.py`**
+   - Creates admin users for application
+   - Sets up initial access credentials
+
+3. **`debug_user_profile.py`**
+   - Debugging tool for user profile issues
+   - Validates SSO integration
+
+### 📊 Monitoring and Maintenance
+
+#### Health Checks
 ```bash
-./db_backup.sh backup [name]          # Create backup
-./db_backup.sh restore <file>         # Restore from backup
-./db_backup.sh list                   # List backups
-./db_backup.sh cleanup [days]         # Remove old backups
-./db_backup.sh test                   # Test connection
+# Check application health
+curl http://35.200.202.18/health
+
+# Check service status
+docker-compose -f docker-compose.prod.yml ps
+
+# View logs
+docker-compose -f docker-compose.prod.yml logs -f
 ```
 
-### 3. `deploy_backup_scripts.sh`
-Deployment script to set up the backup system on your GCP VM:
-- Uploads scripts to VM
-- Configures automatic schedules
-- Sets up monitoring
-- Creates directory structure
+#### Service Management
+```bash
+# Restart nginx
+docker-compose -f docker-compose.prod.yml restart nginx
 
-**Usage:**
+# Restart entire stack
+docker-compose -f docker-compose.prod.yml restart
+
+# Update application
+git pull origin main
+docker-compose -f docker-compose.prod.yml up -d --build web
+```
 ```bash
 ./deploy_backup_scripts.sh
 ```
