@@ -1,0 +1,43 @@
+# SSL CERTIFICATE SETUP WITH .PFX FILES
+# Guide for replacing self-signed certificates with proper .pfx certificates
+
+## STEP 1: Convert .PFX to nginx-compatible format
+
+### On your local machine (where .pfx files are):
+
+# Extract private key from .pfx
+openssl pkcs12 -in certificate.pfx -nocerts -out private.key -nodes
+# You'll be prompted for the .pfx password
+
+# Extract certificate from .pfx  
+openssl pkcs12 -in certificate.pfx -clcerts -nokeys -out certificate.crt
+# You'll be prompted for the .pfx password again
+
+# Extract CA certificate chain (if needed)
+openssl pkcs12 -in certificate.pfx -cacerts -nokeys -out ca-chain.crt
+
+## STEP 2: Clean up the private key (remove extra text)
+# Edit private.key file and keep only the section between:
+# -----BEGIN PRIVATE KEY-----
+# [key content]
+# -----END PRIVATE KEY-----
+
+## STEP 3: Upload certificates to VM
+scp -i ~/.ssh/my-gcp-key certificate.crt shifthandoversajid@35.200.202.18:~/shift_handover_app/nginx/ssl/
+scp -i ~/.ssh/my-gcp-key private.key shifthandoversajid@35.200.202.18:~/shift_handover_app/nginx/ssl/
+
+## STEP 4: Update nginx configuration
+# Update nginx/conf.d/https.conf to use new certificates:
+ssl_certificate /etc/nginx/ssl/certificate.crt;
+ssl_certificate_key /etc/nginx/ssl/private.key;
+
+## STEP 5: Update server_name (replace with your actual domain)
+server_name your-domain.com www.your-domain.com;
+
+## STEP 6: Restart nginx container
+docker restart nginx_https
+
+## SECURITY NOTES:
+- Set proper permissions: chmod 600 private.key
+- Backup old certificates before replacing
+- Test certificate validity: openssl x509 -in certificate.crt -text -noout

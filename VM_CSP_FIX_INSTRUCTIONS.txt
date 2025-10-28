@@ -1,0 +1,34 @@
+# SIMPLE VM FIX INSTRUCTIONS
+# Connect to your VM and follow these steps:
+
+## Method 1: Using the automated script
+1. Connect to your VM: ssh sajidmohammad45@35.200.202.18
+2. Upload the script: 
+   - Copy the content of fix_csp_on_vm.sh to your VM
+   - Or create it directly: nano fix_csp_on_vm.sh
+   - Make it executable: chmod +x fix_csp_on_vm.sh
+   - Run it: ./fix_csp_on_vm.sh
+
+## Method 2: Quick manual fix
+1. Connect to your VM: ssh sajidmohammad45@35.200.202.18
+2. Navigate to app: cd ~/shift_handover_app
+3. Edit the file: nano nginx/conf.d/https.conf
+4. Find the line starting with: add_header Content-Security-Policy
+5. Replace it with this EXACT line:
+
+add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; img-src 'self' data: https: https://ui-avatars.com; connect-src 'self';" always;
+
+6. Save the file (Ctrl+X, then Y, then Enter)
+7. Restart nginx: sudo docker compose -f docker-compose.prod.yml restart nginx
+
+## Method 3: One-line fix
+Run this single command on your VM:
+
+cd ~/shift_handover_app && sed -i 's/add_header Content-Security-Policy "[^"]*" always;/add_header Content-Security-Policy "default-src '\''self'\''; script-src '\''self'\'' '\''unsafe-inline'\'' '\''unsafe-eval'\'' https:\/\/cdnjs.cloudflare.com https:\/\/cdn.jsdelivr.net https:\/\/code.jquery.com; style-src '\''self'\'' '\''unsafe-inline'\'' https:\/\/cdnjs.cloudflare.com https:\/\/cdn.jsdelivr.net https:\/\/fonts.googleapis.com; font-src '\''self'\'' https:\/\/fonts.gstatic.com https:\/\/cdnjs.cloudflare.com https:\/\/cdn.jsdelivr.net; img-src '\''self'\'' data: https: https:\/\/ui-avatars.com; connect-src '\''self'\'';" always;/' nginx/conf.d/https.conf && sudo docker compose -f docker-compose.prod.yml restart nginx
+
+## What this fixes:
+- Allows jQuery from code.jquery.com
+- Allows Bootstrap and libraries from cdn.jsdelivr.net  
+- Allows avatar images from ui-avatars.com
+- Allows all necessary fonts and styles
+- Maintains security while fixing UI issues

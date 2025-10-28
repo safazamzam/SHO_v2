@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify, redirect
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from services.audit_service import log_action
 
@@ -16,6 +17,11 @@ from models.secrets_manager import init_secrets_manager, secrets_manager
 # Initialize Flask app
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# Configure ProxyFix for nginx reverse proxy
+# This fixes URL generation behind nginx proxy
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+print("✅ ProxyFix middleware configured for nginx reverse proxy")
 
 # Configure HTTPS and security headers for production
 if app.config.get('FORCE_HTTPS'):
@@ -54,6 +60,9 @@ from models.models import db
 from models.servicenow_config import ServiceNowConfig  # Import ServiceNow config model
 db.init_app(app)
 login_manager = LoginManager(app)
+login_manager.login_view = 'auth.login'  # Redirect to login page for unauthenticated users
+login_manager.login_message = 'Please log in to access this page.'
+login_manager.login_message_category = 'info'
 mail = Mail(app)
 migrate = Migrate(app, db)
 

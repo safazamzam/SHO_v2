@@ -241,20 +241,26 @@ def user_management():
         elif action == 'add':
             username = request.form.get('username')
             password = request.form.get('password')
+            email = request.form.get('email')
             role = request.form.get('role')
             account_id = request.form.get('account_id', type=int)
             team_id = request.form.get('team_id', type=int)
             first_name = request.form.get('first_name', '').strip()
             last_name = request.form.get('last_name', '').strip()
             debug_msgs = []
-            debug_msgs.append(f"[DEBUG] Add User: username={username}, role={role}, account_id={account_id}, team_id={team_id}, first_name={first_name}, last_name={last_name}")
+            debug_msgs.append(f"[DEBUG] Add User: username={username}, email={email}, role={role}, account_id={account_id}, team_id={team_id}, first_name={first_name}, last_name={last_name}")
             try:
-                if username and password and role and account_id:
+                if username and password and email and role and account_id:
                     existing_user = User.query.filter_by(username=username).first()
+                    existing_email = User.query.filter_by(email=email).first()
                     debug_msgs.append(f"[DEBUG] Existing user: {existing_user}")
+                    debug_msgs.append(f"[DEBUG] Existing email: {existing_email}")
                     if existing_user:
                         flash('Username already exists.')
                         debug_msgs.append("[ERROR] Username already exists.")
+                    elif existing_email:
+                        flash('Email already exists.')
+                        debug_msgs.append("[ERROR] Email already exists.")
                     else:
                         # Only allow adding within scope
                         if current_user.role == 'super_admin' or \
@@ -262,6 +268,7 @@ def user_management():
                            (current_user.role == 'team_admin' and account_id == current_user.account_id and team_id == current_user.team_id):
                             user = User(
                                 username=username, 
+                                email=email,
                                 password=generate_password_hash(password), 
                                 role=role, 
                                 account_id=account_id, 
@@ -273,16 +280,16 @@ def user_management():
                             )
                             db.session.add(user)
                             db.session.flush()
-                            debug_msgs.append(f"[DEBUG] User (before commit): id={user.id}, username={user.username}")
+                            debug_msgs.append(f"[DEBUG] User (before commit): id={user.id}, username={user.username}, email={user.email}")
                             db.session.commit()
-                            log_action('Add User', f'User: {username}, Role: {role}, Account: {account_id}, Team: {team_id}')
+                            log_action('Add User', f'User: {username}, Email: {email}, Role: {role}, Account: {account_id}, Team: {team_id}')
                             debug_msgs.append(f"[DEBUG] User created: {user}")
                             flash('User added successfully.')
                         else:
                             flash('You do not have permission to add user to this account/team.')
                             debug_msgs.append("[ERROR] Permission denied for user add.")
                 else:
-                    flash('All fields except team are required.')
+                    flash('Username, password, email, role, and account are required.')
                     debug_msgs.append("[ERROR] Missing required fields for user add.")
             except Exception as e:
                 db.session.rollback()
